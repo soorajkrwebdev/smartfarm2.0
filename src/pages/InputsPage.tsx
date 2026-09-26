@@ -6,8 +6,8 @@ import { ActivityFormModal } from '../components/activities/ActivityFormModal';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { EmptyState } from '../components/common/EmptyState';
 import { Button } from '../components/common/Button';
-import { FarmInput, InputCategory } from '../types';
-import { Package, Plus, Search, Filter, IndianRupee, Layers, CheckCircle2 } from 'lucide-react';
+import { FarmInput } from '../types';
+import { Package, Plus, Search, IndianRupee, CheckCircle2 } from 'lucide-react';
 
 export const InputsPage: React.FC = () => {
   const { inputs, deleteInput, selectedFarmId, farms, crops } = useFarmData();

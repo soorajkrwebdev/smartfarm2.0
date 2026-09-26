@@ -6,7 +6,7 @@ import { Button } from '../common/Button';
 import { FarmMapPicker } from './FarmMapPicker';
 import { Farm, AreaUnit, FarmingMethod, OrganicStatus } from '../../types';
 import { useFarmData } from '../../contexts/FarmContext';
-import { MapPin, Map, AlignLeft } from 'lucide-react';
+import { Map } from 'lucide-react';
 
 interface FarmFormModalProps {
   isOpen: boolean;

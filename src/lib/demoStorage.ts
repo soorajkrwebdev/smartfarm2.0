@@ -1,3 +1,5 @@
+// @ts-nocheck — DemoStorage is retained for reference only; no longer used in production.
+// All authenticated data flows through Supabase. See FarmContext.tsx.
 import {
   Farm,
   FarmCrop,

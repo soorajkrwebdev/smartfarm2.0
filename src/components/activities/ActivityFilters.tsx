@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { ACTIVITY_TYPES } from './ActivityFormModal';
 import { useFarmData } from '../../contexts/FarmContext';
 

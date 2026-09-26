@@ -1,0 +1,19 @@
+﻿src/components/farm-work/ViewInquiriesModal.tsx(67,7): error TS2322: Type '"max-w-2xl"' is not assignable to type '"sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | undefined'.
+src/components/waste/CompostBatchModal.tsx(44,7): error TS2353: Object literal may only specify known properties, and 'starting_quantity' does not exist in type 'Omit<CompostBatch, "id" | "created_at" | "updated_at" | "user_id">'.
+src/pages/analytics/AnalyticsPage.tsx(44,66): error TS2339: Property 'total_area' does not exist on type 'Farm'.
+src/pages/analytics/AnalyticsPage.tsx(46,20): error TS2339: Property 'farming_type' does not exist on type 'Farm'.
+src/pages/analytics/AnalyticsPage.tsx(47,41): error TS2339: Property 'total_area' does not exist on type 'Farm'.
+src/pages/analytics/AnalyticsPage.tsx(58,7): error TS2367: This comparison appears to be unintentional because the types 'ActivityType' and '"organic_practice"' have no overlap.
+src/pages/analytics/AnalyticsPage.tsx(74,46): error TS2367: This comparison appears to be unintentional because the types '"collected" | "processing" | "applied" | "disposed"' and '"recycled"' have no overlap.
+src/pages/analytics/AnalyticsPage.tsx(78,18): error TS2367: This comparison appears to be unintentional because the types 'CompostStatus' and '"completed"' have no overlap.
+src/pages/analytics/AnalyticsPage.tsx(79,41): error TS2339: Property 'finished_quantity' does not exist on type 'CompostBatch'.
+src/pages/farm-work/FarmWorkBoardPage.tsx(96,36): error TS2322: Type '"closed"' is not assignable to type 'JobStatus | undefined'.
+src/pages/farm-work/FarmWorkBoardPage.tsx(112,12): error TS2678: Type '"in-progress"' is not comparable to type 'JobStatus'.
+src/pages/farm-work/FarmWorkBoardPage.tsx(116,12): error TS2678: Type '"closed"' is not comparable to type 'JobStatus'.
+src/pages/farm-work/FarmWorkBoardPage.tsx(433,11): error TS2322: Type '{ isOpen: true; onClose: () => void; job: FarmJob; onSuccess: () => void; }' is not assignable to type 'IntrinsicAttributes & JobInquiryModalProps'.
+  Property 'onSuccess' does not exist on type 'IntrinsicAttributes & JobInquiryModalProps'.
+src/pages/pest-ipm/PestPage.tsx(48,7): error TS2339: Property 'crop' does not exist on type 'PestAdvisory'.
+src/pages/pest-ipm/PestPage.tsx(49,7): error TS2339: Property 'pest_or_disease' does not exist on type 'PestAdvisory'.
+src/pages/pest-ipm/PestPage.tsx(332,21): error TS2322: Type '"emerald" | "amber" | "slate" | "teal"' is not assignable to type '"emerald" | "amber" | "blue" | "slate" | "rose" | "indigo" | "purple" | undefined'.
+  Type '"teal"' is not assignable to type '"emerald" | "amber" | "blue" | "slate" | "rose" | "indigo" | "purple" | undefined'.
+src/pages/waste/WastePage.tsx(288,73): error TS2339: Property 'starting_quantity' does not exist on type 'CompostBatch'.

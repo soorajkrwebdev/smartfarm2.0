@@ -5,7 +5,7 @@ import { FarmFormModal } from '../components/farms/FarmFormModal';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { EmptyState } from '../components/common/EmptyState';
 import { Button } from '../components/common/Button';
-import { Farm, OrganicStatus } from '../types';
+import { Farm } from '../types';
 import { Trees, Plus, Search, Filter } from 'lucide-react';
 
 export const FarmsPage: React.FC = () => {

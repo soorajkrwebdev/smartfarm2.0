@@ -1,0 +1,198 @@
+# SmartFarm 2.0 — Chunk 1 Implementation Plan
+
+## Task 1: Fix Type System — Types, Enums, and Shared Component Prop Mismatches
+- **Status**: `pending`
+- **Priority**: high
+- **Depends On**: None
+- **Description**:
+  - Extend `BadgeProps.variant` union in `components/common/Badge.tsx` to include `'teal'` (add teal class pair in variantClasses map).
+  - Fix `AnalyticsPage.tsx` access to nonexistent fields:
+    - Replace `f.total_area` → `f.area`.
+    - Replace `f.farming_type` → `f.farming_method` (note: `farming_type` lives on `UserProfile` / `profile.farming_type`).
+    - Replace status comparison `w.status === 'recycled'` → match against `WasteStatus` valid values: `w.status === 'composted' || w.status === 'applied'`.
+    - Replace status comparison `b.status === 'completed'` → match `CompostStatus` valid values: `b.status === 'finished' || b.status === 'used'`.
+    - Replace activity comparison `a.activity_type === 'organic_practice'` → filter by the real `ActivityType` values that are organic (`'Organic manure'`, `'Biofertilizer application'`, `'Mulching'`), as already done elsewhere in the project.
+    - Add explicit parameter types to all `reduce` callbacks (currently implicit `any` errors).
+  - Fix `FarmWorkBoardPage.tsx` JobStatus concerns:
+    - If the `JobStatus` type is missing members, extend `types/index.ts` union to include `'closed'` and `'in-progress'` (audit confirms they already exist; if tsc still complains, double-check import path and eliminate shadowing).
+    - Remove `onSuccess` prop passed to `JobInquiryModal` (add `onInquirySubmitted?: () => void` to its interface and route it, or — simpler — just remove the prop from the parent since `JobInquiryModal` already has internal success state).
+  - Fix `ViewInquiriesModal.tsx` maxWidth: change `maxWidth="max-w-2xl"` → `maxWidth="2xl"`.
+  - Fix `WastePage.tsx` / `SustainabilityPage.tsx` / `reportService.ts` reference to nonexistent field `volume_finished` on CompostBatch → rename to `finished_quantity`.
+  - Fix `TestsPage.tsx` accesses to `.laboratory` on SoilTest/WaterTest → rename to `.lab_name` (the correct field per interface).
+  - Fix `PestPage.tsx` implicit `any` params: type the `.filter()` callback parameter `a` as `PestAdvisory`.
+  - Verify `CompostBatchModal.tsx` passes fields that exist on `Omit<CompostBatch, ...>`: confirm `starting_quantity`, `finished_quantity`, `quality_rating`, `applied_to_crop_id` all exist in the `CompostBatch` interface (add any that are missing to `types/index.ts` with correct SQL-backed names).
+- **Acceptance Criteria Addressed**: AC-1, AC-4, AC-12
+- **Test Requirements**:
+  - `rule` TR-1.1: `npx tsc --noEmit` produces zero TS2322/TS2339/TS2353/TS2367/TS7006 errors in the files touched by this task.
+  - `rule` TR-1.2: No `any` introduced as a fix; every previously implicit-`any` parameter has an explicit, correct type.
+  - `rubric` TR-1.3: Correctness of field-name alignment; scale 1-5; 1 = renamed fields wrong way; 3 = names match types but not SQL columns; 5 = every renamed field name matches BOTH the TypeScript interface AND the SQL column name from migrations.
+- **Notes**: Run `GetDiagnostics` on each edited file to confirm per-file errors are gone before moving on.
+
+## Task 2: Extend Types and FarmContext with missing LabReport + refresh wiring
+- **Status**: `pending`
+- **Priority**: high
+- **Depends On**: Task 1
+- **Description**:
+  - In `types/index.ts`, confirm `LabReport` interface matches the migration SQL columns for `lab_reports` table. Add to it any missing fields that `add/update/delete` CRUD will use (e.g. ensure `certification_disclaimer` has a sensible default for inserts or mark optional).
+  - In `FarmContext.tsx`:
+    - Add `labReports: LabReport[]` to `FarmContextType` interface.
+    - Add `addLabReport`, `updateLabReport`, `deleteLabReport` methods to interface following the exact pattern of peers (Omit signature + return type).
+    - Add `useState` for `labReports` (empty array default).
+    - In `refreshData()`, add a `safeSelect<LabReport>` call for `lab_reports` table with a `farms(name)` join, flattening to include `farm_name`.
+    - Implement the three CRUD functions (insert/update/delete + select after insert + optimistic state updates, exactly matching pattern of soilTests/waterTests CRUD).
+    - Expose all 4 in the Provider value.
+  - In `TestsPage.tsx`:
+    - Remove the stub `const labReports: any[] = [];` and `deleteLabReport` stub; destructure them from `useFarmData()`.
+    - Fix `deleteSoilTest`, `deleteWaterTest`, `deleteLabReport` references (they now exist in context).
+    - Fix `filteredReports` implicit any: type the callback parameter `r` as `LabReport`.
+- **Acceptance Criteria Addressed**: AC-1, AC-4, AC-5, AC-12
+- **Test Requirements**:
+  - `rule` TR-2.1: Destructuring `{ labReports, addLabReport, updateLabReport, deleteLabReport }` from `useFarmData()` compiles without TS2339.
+  - `rule` TR-2.2: `TestsPage` has no `any[]` stub for labReports and its implicit-any filter params are typed.
+  - `rubric` TR-2.3: Consistency of LabReport CRUD pattern with SoilTest CRUD; scale 1-5; 1 = different shape/signature from peers; 3 = works but different naming; 5 = identical Omit/error/select/join/flatten pattern to soilTests CRUD.
+
+## Task 3: Fix useWeather / weatherService WeatherData interface alignment
+- **Status**: `pending`
+- **Priority**: high
+- **Depends On**: Task 1
+- **Description**:
+  - In `hooks/useWeather.ts`, the two places constructing `WeatherData` must include the four required fields currently missing: `rain`, `rainProbability`, `source`, `fetchedAt`. (The second half of the hook already supplies them; the cached-parsing and early-error paths that were stubbed need it too.)
+  - In `services/weatherService.ts`, the single `WeatherData` construction at line ~97 similarly needs `rain`, `rainProbability`, `source`, `fetchedAt` — compare with the correct implementation already in `useWeather.ts` and copy the same values.
+- **Acceptance Criteria Addressed**: AC-1, AC-12
+- **Test Requirements**:
+  - `rule` TR-3.1: `npx tsc --noEmit` reports 0 TS2739 errors for `WeatherData` in either file.
+  - `rubric` TR-3.2: Metadata consistency; scale 1-5; 1 = hardcoded fake values; 3 = fields present but not meaningful; 5 = `source` string cites Open-Meteo explicitly and `fetchedAt` is `new Date().toISOString()` at time of fetch.
+
+## Task 4: Remove DemoStorage usage from any production path
+- **Status**: `pending`
+- **Priority**: high
+- **Depends On**: Task 1
+- **Description**:
+  - Confirm by grep that `demoStorage.ts` is NOT imported by any of: `FarmContext.tsx`, `AuthContext.tsx`, `App.tsx`, any `pages/*.tsx`, any `components/**/*.tsx`, any `services/*.ts`.
+  - If any import exists, delete it and wire the call site through Supabase (FarmContext) instead.
+  - Leave `demoStorage.ts` in place (it has `@ts-nocheck` and a header saying it is reference only). Do NOT export/import it.
+  - Verify: in `LandingPage.tsx`, `KnowledgePage.tsx`, `MarketPage.tsx`, `aiService.ts` — anywhere the grep for "demo/mock/fallback/sample/hardcoded/fake" matched — confirm they do NOT load demo data into live state. Fix any that do.
+- **Acceptance Criteria Addressed**: AC-6
+- **Test Requirements**:
+  - `rule` TR-4.1: `grep -r "from.*demoStorage\|import.*demoStorage" src/` returns zero lines.
+  - `rule` TR-4.2: `FarmContext.refreshData()` never returns arrays populated from demoStorage; arrays come exclusively from Supabase queries.
+  - `rubric` TR-4.3: Degree of isolation; scale 1-5; 1 = page still shows sample farms when logged in; 3 = file exists but not imported; 5 = no path from App entrypoint ever reaches demoStorage code at runtime.
+
+## Task 5: RLS audit + new migration to fill missing policies + update RLS test file
+- **Status**: `pending`
+- **Priority**: high
+- **Depends On**: Task 1
+- **Description**:
+  - Read all 6 migration SQL files to catalog every private table and whether RLS is enabled and has 4 policies (S/I/U/D).
+  - Create a NEW migration file (do not edit existing ones) named e.g. `20260925000000_chunk1_rls_audit.sql` under `supabase/migrations/`.
+  - For each private table missing RLS, write:
+    - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`
+    - SELECT policy: `using (auth.uid() = user_id)`
+    - INSERT `with check (auth.uid() = user_id AND EXISTS (SELECT 1 FROM farms f WHERE f.id = farm_id AND f.user_id = auth.uid()))` for tables that have a `farm_id` foreign key (to prevent "my user_id + another user's farm_id").
+    - UPDATE: `using (auth.uid() = user_id)` plus same with check on user_id/farm_id.
+    - DELETE: `using (auth.uid() = user_id)`.
+  - Tables to audit: `farm_inputs`, `pest_observations`, `ipm_records`, `pesticide_applications`, `soil_tests`, `water_tests`, `lab_reports`, `farm_waste`, `compost_batches`, `farm_expenses`, `crop_harvests`, `ai_conversations`, `reports`, `notifications`, `farm_jobs`, `job_inquiries`.
+  - For tables where `farm_crops`/child rows exist, add `farm_id` ownership cross-checks.
+  - Append to `supabase/tests/rls_tests.sql` new `do $$...$$` blocks that verify:
+    - Farmer A cannot SELECT/INSERT/UPDATE/DELETE farmer B's rows for: farm_inputs, pest_observations, soil_tests, compost_batches, farm_expenses.
+    - INSERT of crop with farm_id owned by B, user_id=A must fail via RLS with check.
+- **Acceptance Criteria Addressed**: AC-7, AC-8
+- **Test Requirements**:
+  - `rule` TR-5.1: New migration file exists and references every private table listed.
+  - `rule` TR-5.2: rls_tests.sql includes at least 8 ownership assertions across different tables, and at least 1 cross-farm INSERT assertion.
+  - `rubric` TR-5.3: RLS pattern consistency; scale 1-5; 1 = ad-hoc policies; 3 = mostly same pattern; 5 = every table has the same 4-policy structure with EXISTS() guard for farm_id ownership on child tables.
+- **Notes**: Public tables (organic_inputs, pesticide_advisories, organic_practices, knowledge_articles, market_prices, public_farm_jobs) stay SELECTable by anon; do NOT add restrictive SELECT policies for them.
+
+## Task 6: Sidebar Navigation Redesign (FR-5 structure, rename tabs, add Reports + Notifications)
+- **Status**: `pending`
+- **Priority**: high
+- **Depends On**: Task 1
+- **Description**:
+  - In `components/layout/Sidebar.tsx`:
+    - Extend `NavigationTab` type to add `'reports'`, `'notifications'` (both already exist in `routes.ts`).
+    - Add `'expenses'`, `'harvests'` if they appear in routes but not sidebar, OR if App.tsx renderTabContent doesn't handle them yet, drop them from this task — they can fall through to ModulePreviewPage.
+    - Replace the flat "Core Operations" / "Intelligence" sections with the grouped sections from FR-5 (OVERVIEW, FARM MANAGEMENT, CROP PROTECTION, ORGANIC FARMING, FARM INTELLIGENCE, SUSTAINABILITY, TOOLS, PUBLIC).
+    - CROP PROTECTION group: render as section with header + 2 items:
+      - "🐛 Pest & Disease Monitoring" → maps to `pest-ipm` tab.
+      - "🛡 IPM & Pesticide Advisory" → also maps to `pest-ipm` tab (same page; we'll add pre-select internal tab later in Task 8 if simple, or leave as-is).
+    - ORGANIC FARMING group:
+      - "🌿 Organic Farming" → maps to `organic` tab.
+      - "🧪 Organic Input Library" → maps to `organic` tab.
+    - Rename labels:
+      - `tests` tab label changes from "Soil & Water Tests" → "Soil & Water".
+      - `waste` tab label changes from "Waste & Compost" → "Waste & Compost" (keep; align with "Waste & Compost" under SUSTAINABILITY group).
+      - Note: The "Farm Work" tab lives in the PUBLIC section because it is publicly accessible to anonymous visitors too.
+    - Add TOOLS section items:
+      - Farm AI, Knowledge, Reports → `'reports'`, Notifications → `'notifications'`.
+    - Add styling so that CROP PROTECTION and ORGANIC FARMING section headers stand out (different background chip or bold accent color from other section headers).
+  - In `App.tsx`:
+    - Add `'reports'` and `'notifications'` cases to `renderTabContent`; render `ModulePreviewPage` for both (the existing page supports a tab name prop). No need to build out full pages yet.
+  - In `lib/routes.ts`:
+    - Confirm `NavigationTab` type and `TAB_PATHS` already include `reports` and `notifications`. If the Sidebar type diverges, reconcile them (prefer Sidebar as source of truth since that is where TS errors surfaced via navigation usage). Also confirm `NavigationTab` exported from Sidebar.tsx matches routes.ts `NavigationTab`.
+- **Acceptance Criteria Addressed**: AC-9
+- **Test Requirements**:
+  - `rule` TR-6.1: Sidebar NavigationTab includes `'reports'` and `'notifications'` without error.
+  - `rubric` TR-6.2: Flagship prominence; scale 1-5; 1 = no groupings; 3 = groups exist but flagship groups look identical to others; 5 = exact 8-group structure, flagship headers have distinct accent color/emoji, items per group match FR-5 verbatim.
+  - `rubric` TR-6.3: Label correctness; scale 1-5; 1 = "Tests" still the label; 3 = some renamed; 5 = every label in sidebar exactly matches the names in FR-5 spec listing.
+
+## Task 7: Dashboard Redesign — KPI cards, flagship sections, quick actions
+- **Status**: `pending`
+- **Priority**: high
+- **Depends On**: Task 1, Task 6 (for onTabChange linking)
+- **Description**:
+  - In `App.tsx`, add state + props wiring for three new quick-action modals/actions:
+    - `onOpenRecordPestObservation` → opens `PestObservationModal` (existing component).
+    - `onOpenPesticideAdvisory` → navigates to `pest-ipm` tab (call `setCurrentTab('pest-ipm')`).
+    - `onOpenOrganicInputs` → navigates to `organic` tab.
+    - Pass these props to DashboardPage. Also mount `<PestObservationModal />` globally in AppShell or in App.tsx with open/close state.
+  - In `DashboardPage.tsx`:
+    - Update props interface to include the 3 new callbacks.
+    - Replace the top 4 KPI StatCards with: Active Farms, Active Crops, Pest Observations, Open Follow-ups.
+      - "Open Follow-ups": compute from `pestObservations` where `status !== 'controlled' && status !== 'failed'` OR where `pesticideApplications` have an upcoming `follow_up_date`.
+    - Replace the quick-action buttons row with three flagship primary/secondary actions matching the new callbacks:
+      - "Record Pest Observation" (primary, Bug icon)
+      - "Open Pesticide Advisory" (secondary, Shield icon)
+      - "Explore Organic Inputs" (secondary, Leaf icon)
+    - Add/keep body sections to total:
+      - Pest & IPM Attention card (new): count of high/critical severity observations, latest 2 observations, link to pest-ipm.
+      - Organic Farming Progress card (new): % of farms using organic method, count of organic inputs, count of finished compost batches, link to organic page.
+      - Weather widget (keep existing).
+      - Recent Activities feed (keep existing).
+      - Recent Farm Inputs card (NEW): list last 3 inputs from `inputs[]` sorted by purchase_date.
+      - Soil Test Status card (NEW): count of soil tests + water tests; show latest test date if any.
+    - Ensure `selectedFarm?.name` fallback still works; do NOT remove the farmer greeting context block.
+- **Acceptance Criteria Addressed**: AC-10
+- **Test Requirements**:
+  - `rule` TR-7.1: Dashboard props include 3 flagship callbacks and they fire without TS errors.
+  - `rubric` TR-7.2: Flagship clarity; scale 1-5; 1 = unchanged; 3 = 1 flagship section or card added; 5 = 4 new KPI names match exactly + 3 quick-action buttons match + 6 named body sections/cards present with correct content.
+  - `rule` TR-7.3: No hardcoded KPIs — every number comes from context arrays.
+
+## Task 8: Security audit for secrets in src/
+- **Status**: `pending`
+- **Priority**: high
+- **Depends On**: Task 1
+- **Description**:
+  - Grep `src/` for: `service_role`, `sk-` (live LLM keys not placeholders), `password:` followed by a non-empty string literal, `VITE_.*_SECRET`, `API_KEY.*=.*['"]`.
+  - In `services/aiService.ts`, if a key is hardcoded, remove it and require it via `import.meta.env.VITE_OPENAI_API_KEY` (with a guard that throws or returns "not configured" when missing). Never commit a real key.
+  - In `AuthPage.tsx`, `AuthContext.tsx`, `supabase.ts` — confirm no password literals, no anon key typed directly as a string, only env-driven.
+  - Fix any findings.
+- **Acceptance Criteria Addressed**: AC-11
+- **Test Requirements**:
+  - `rule` TR-8.1: `grep -RniE "service_role|sk-[A-Za-z0-9]{10,}|VITE_.*_SECRET" src/` returns 0 lines (excluding placeholder strings like 'your-key-here' that are clearly not real).
+  - `rubric` TR-8.2: Env-var discipline; scale 1-5; 1 = real keys committed; 3 = some keyed but inconsistent; 5 = every sensitive external API access uses `import.meta.env.VITE_*` with a guard for undefined.
+
+## Task 9: End-to-end build, lint, tsc — zero-error pass
+- **Status**: `pending`
+- **Priority**: high
+- **Depends On**: Task 1, 2, 3, 4, 5, 6, 7, 8
+- **Description**:
+  - Run `npx tsc --noEmit`. Fix any remaining errors iteratively.
+  - Run `npm run lint`. Fix any NEW errors introduced by this chunk (ignore pre-existing unrelated oxlint warnings that are style-only).
+  - Run `npm run build`. Fix any Vite bundler / type-check errors until `dist/` is produced.
+  - If `CompostBatchModal`, `CreateJobModal`, `ViewInquiriesModal`, `LabReportModal`, `SoilTestModal`, `WaterTestModal`, `FarmWasteModal` are still missing context methods, trace to Task 1/2/6 and correct them.
+- **Acceptance Criteria Addressed**: AC-1, AC-2, AC-3
+- **Test Requirements**:
+  - `rule` TR-9.1: `npx tsc --noEmit` exits code 0.
+  - `rule` TR-9.2: `npm run build` exits code 0 and `dist/index.html` exists.
+  - `rule` TR-9.3: `npm run lint` exits code 0.
+  - `rubric` TR-9.4: Suppression hygiene; scale 1-5; 1 = multiple `any`/`@ts-ignore` introduced; 3 = only demoStorage has `@ts-nocheck`; 5 = only demoStorage has suppression, every changed file uses correct strict typing.

@@ -27,18 +27,20 @@ import { FarmFormModal } from './components/farms/FarmFormModal';
 import { CropFormModal } from './components/crops/CropFormModal';
 import { ActivityFormModal } from './components/activities/ActivityFormModal';
 import { InputFormModal } from './components/inputs/InputFormModal';
+import { PestObservationModal } from './components/pest-ipm/PestObservationModal';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 
 const MainAppContent: React.FC = () => {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, isConfigured } = useAuth();
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [authView, setAuthView] = useState<'none' | 'login' | 'register'>('none');
 
-  // Quick action modal triggers
+  // Quick-action modal triggers
   const [isAddFarmOpen, setIsAddFarmOpen] = useState(false);
   const [isAddCropOpen, setIsAddCropOpen] = useState(false);
   const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
   const [isAddInputOpen, setIsAddInputOpen] = useState(false);
+  const [isPestObsModalOpen, setIsPestObsModalOpen] = useState(false);
 
   if (loading) {
     return (
@@ -48,19 +50,40 @@ const MainAppContent: React.FC = () => {
     );
   }
 
-  // Not logged in and not on auth screen -> show public landing page
+  // Supabase not configured at all
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-amber-200 p-8 text-center shadow-lg">
+          <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Supabase Not Configured</h2>
+          <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+            Copy <code className="bg-slate-100 px-1 rounded">.env.example</code> to{' '}
+            <code className="bg-slate-100 px-1 rounded">.env</code> and set your{' '}
+            <code className="bg-slate-100 px-1 rounded">VITE_SUPABASE_URL</code> and{' '}
+            <code className="bg-slate-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> values, then restart the dev server.
+          </p>
+          <p className="text-xs text-slate-400">
+            See the project README for setup instructions.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not logged in → landing page or auth
   if (!user && authView === 'none') {
     return (
       <LandingPage
         onGoToAuth={(mode) => setAuthView(mode)}
-        onExploreDemo={async () => {
-          await signIn('ramesh.patel@smartfarm.org', 'demo');
-        }}
       />
     );
   }
 
-  // Auth screen (Login / Register)
   if (!user && authView !== 'none') {
     return (
       <AuthPage
@@ -70,7 +93,7 @@ const MainAppContent: React.FC = () => {
     );
   }
 
-  // Authenticated farmer dashboard application
+  // Authenticated farmer
   const renderTabContent = () => {
     switch (currentTab) {
       case 'dashboard':
@@ -81,40 +104,55 @@ const MainAppContent: React.FC = () => {
             onOpenAddCrop={() => setIsAddCropOpen(true)}
             onOpenAddActivity={() => setIsAddActivityOpen(true)}
             onOpenAddInput={() => setIsAddInputOpen(true)}
+            onOpenRecordPestObservation={() => setIsPestObsModalOpen(true)}
+            onOpenPesticideAdvisory={() => setCurrentTab('pest-ipm')}
+            onOpenOrganicInputs={() => setCurrentTab('organic')}
           />
         );
-      case 'farms':
-        return <FarmsPage />;
-      case 'crops':
-        return <CropsPage />;
-      case 'activities':
-        return <ActivitiesPage />;
-      case 'inputs':
-        return <InputsPage />;
-      case 'organic':
-        return <OrganicPage />;
-      case 'pest-ipm':
-        return <PestPage />;
-      case 'tests':
-        return <TestsPage />;
-      case 'waste':
-        return <WastePage />;
-      case 'sustainability':
-        return <SustainabilityPage />;
-      case 'weather':
-        return <WeatherPage />;
-      case 'market':
-        return <MarketPage />;
-      case 'farm-work':
-        return <FarmWorkBoardPage />;
-      case 'analytics':
-        return <AnalyticsPage />;
-      case 'farm-ai':
-        return <FarmAiPage />;
-      case 'knowledge':
-        return <KnowledgePage />;
-      case 'profile':
-        return <ProfilePage />;
+      case 'farms':      return <FarmsPage />;
+      case 'crops':      return <CropsPage />;
+      case 'activities': return <ActivitiesPage />;
+      case 'inputs':     return <InputsPage />;
+      case 'organic':    return <OrganicPage />;
+      case 'pest-ipm':   return <PestPage />;
+      case 'tests':      return <TestsPage />;
+      case 'waste':      return <WastePage />;
+      case 'sustainability': return <SustainabilityPage />;
+      case 'weather':    return <WeatherPage />;
+      case 'market':     return <MarketPage />;
+      case 'farm-work':  return <FarmWorkBoardPage />;
+      case 'analytics':  return <AnalyticsPage />;
+      case 'farm-ai':    return <FarmAiPage />;
+      case 'knowledge':  return <KnowledgePage />;
+      case 'profile':    return <ProfilePage />;
+      case 'reports':
+        return (
+          <ModulePreviewPage
+            tab="reports"
+            onGoToDashboard={() => setCurrentTab('dashboard')}
+          />
+        );
+      case 'notifications':
+        return (
+          <ModulePreviewPage
+            tab="notifications"
+            onGoToDashboard={() => setCurrentTab('dashboard')}
+          />
+        );
+      case 'expenses':
+        return (
+          <ModulePreviewPage
+            tab="expenses"
+            onGoToDashboard={() => setCurrentTab('dashboard')}
+          />
+        );
+      case 'harvests':
+        return (
+          <ModulePreviewPage
+            tab="harvests"
+            onGoToDashboard={() => setCurrentTab('dashboard')}
+          />
+        );
       default:
         return (
           <ModulePreviewPage
@@ -130,23 +168,12 @@ const MainAppContent: React.FC = () => {
       <AppShell currentTab={currentTab} onTabChange={setCurrentTab}>
         {renderTabContent()}
 
-        {/* Global Modals triggered from dashboard or header */}
-        <FarmFormModal
-          isOpen={isAddFarmOpen}
-          onClose={() => setIsAddFarmOpen(false)}
-        />
-        <CropFormModal
-          isOpen={isAddCropOpen}
-          onClose={() => setIsAddCropOpen(false)}
-        />
-        <ActivityFormModal
-          isOpen={isAddActivityOpen}
-          onClose={() => setIsAddActivityOpen(false)}
-        />
-        <InputFormModal
-          isOpen={isAddInputOpen}
-          onClose={() => setIsAddInputOpen(false)}
-        />
+        {/* Global quick-add modals triggered from dashboard/header */}
+        <FarmFormModal isOpen={isAddFarmOpen} onClose={() => setIsAddFarmOpen(false)} />
+        <CropFormModal isOpen={isAddCropOpen} onClose={() => setIsAddCropOpen(false)} />
+        <ActivityFormModal isOpen={isAddActivityOpen} onClose={() => setIsAddActivityOpen(false)} />
+        <InputFormModal isOpen={isAddInputOpen} onClose={() => setIsAddInputOpen(false)} />
+        <PestObservationModal isOpen={isPestObsModalOpen} onClose={() => setIsPestObsModalOpen(false)} />
       </AppShell>
     </FarmProvider>
   );

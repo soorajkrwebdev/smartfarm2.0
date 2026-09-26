@@ -15,7 +15,6 @@ import {
   BarChart3,
   Bot,
   BookOpen,
-  ArrowRight,
   ShieldCheck,
   CheckCircle2
 } from 'lucide-react';

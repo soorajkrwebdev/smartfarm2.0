@@ -1,7 +1,7 @@
 import React from 'react';
 import { Farm } from '../../types';
 import { Badge } from '../common/Badge';
-import { Trees, MapPin, Droplets, Mountain, Edit3, Trash2, Sprout, ArrowRight } from 'lucide-react';
+import { MapPin, Droplets, Mountain, Edit3, Trash2, Sprout, ArrowRight } from 'lucide-react';
 
 interface FarmCardProps {
   farm: Farm;

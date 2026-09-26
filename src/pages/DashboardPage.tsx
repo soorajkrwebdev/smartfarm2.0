@@ -9,17 +9,16 @@ import { Badge } from '../components/common/Badge';
 import {
   Trees,
   Sprout,
+  Bug,
   ClipboardList,
-  IndianRupee,
-  Leaf,
-  Plus,
-  CloudSun,
-  ShieldCheck,
-  Calendar,
-  AlertCircle,
-  Sparkles,
   ArrowRight,
-  Package
+  Package,
+  Shield,
+  Leaf,
+  FlaskConical,
+  CalendarDays,
+  Droplets,
+  TestTubeDiagonal
 } from 'lucide-react';
 import { NavigationTab } from '../components/layout/Sidebar';
 
@@ -29,81 +28,133 @@ interface DashboardPageProps {
   onOpenAddCrop: () => void;
   onOpenAddActivity: () => void;
   onOpenAddInput: () => void;
+  onOpenRecordPestObservation: () => void;
+  onOpenPesticideAdvisory: () => void;
+  onOpenOrganicInputs: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   onTabChange,
-  onOpenAddFarm,
+  onOpenAddFarm: _onOpenAddFarm,
   onOpenAddCrop,
   onOpenAddActivity,
-  onOpenAddInput,
+  onOpenAddInput: _onOpenAddInput,
+  onOpenRecordPestObservation,
+  onOpenPesticideAdvisory,
+  onOpenOrganicInputs,
 }) => {
   const { profile } = useAuth();
-  const { farms, crops, activities, selectedFarm } = useFarmData();
+  const {
+    farms,
+    crops,
+    activities,
+    inputs,
+    organicInputs,
+    pestObservations,
+    ipmRecords: _ipmRecords,
+    pesticideApplications,
+    soilTests,
+    waterTests,
+    selectedFarm,
+  } = useFarmData();
 
-  // Computations
-  const totalFarms = farms.length;
-  const totalAreaAcres = farms.reduce((acc, f) => {
-    // Basic normalization: assume acres unless hectares (* 2.47)
-    const factor = f.area_unit === 'hectares' ? 2.47 : 1;
-    return acc + (f.area * factor);
-  }, 0);
-
+  const activeFarms = farms.filter(f =>
+    crops.some(c => c.farm_id === f.id && c.status === 'active') || farms.length <= 3
+  );
   const activeCrops = crops.filter(c => c.status === 'active');
-  const totalExpenses = activities.reduce((acc, a) => acc + (a.cost || 0), 0);
-  const organicPracticesCount = activities.filter(a => 
-    a.activity_type === 'Organic manure' || 
-    a.activity_type === 'Biofertilizer application' || 
-    a.activity_type === 'Mulching'
-  ).length;
+  const totalPestObs = pestObservations.length;
+
+  const highSeverityPests = pestObservations.filter(
+    p => p.severity === 'high' || p.severity === 'critical'
+  );
+  const openPestFollowups = pestObservations.filter(
+    p => p.severity === 'high' || p.severity === 'critical' || p.severity === 'medium'
+  );
+  const upcomingAppFollowups = pesticideApplications.filter(
+    a => a.follow_up_date !== undefined && a.follow_up_date !== null && a.follow_up_date !== ''
+  );
+  const openFollowUpsCount = openPestFollowups.length + upcomingAppFollowups.length;
+
+  const organicPracticeActivities = activities.filter(a => {
+    const t = a.activity_type;
+    return (
+      t === 'Organic manure' ||
+      t === 'Biofertilizer application' ||
+      t === 'Mulching'
+    );
+  });
+  const sustainableScore = Math.min(
+    Math.round(
+      ((organicPracticeActivities.length * 0.6 + organicInputs.length * 0.4) /
+        Math.max(activities.length + 1, 5)) *
+        100
+    ),
+    100
+  );
+
+  const recentInputs = [...inputs]
+    .sort((a, b) => {
+      const ad = a.purchase_date ? new Date(a.purchase_date).getTime() : 0;
+      const bd = b.purchase_date ? new Date(b.purchase_date).getTime() : 0;
+      return bd - ad;
+    })
+    .slice(0, 3);
+
+  const latestSoil = soilTests[0];
+  const latestWater = waterTests[0];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Farmer Greeting & Context */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
+      {/* Farmer Greeting & Context + Flagship Quick Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-2xs">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wider">
               {profile?.farming_type ? `${profile.farming_type} Farming` : 'Sustainable Farm System'}
             </span>
             <span className="text-xs text-slate-400">•</span>
-            <span className="text-xs text-slate-500 font-medium">
-              {profile?.district ? `${profile.district}, ${profile.state}` : 'Farm Location Set'}
+            <span className="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold border border-rose-100">
+              🐛 Crop Protection Intelligence
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-100">
+              🌿 Organic Knowledge Hub
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-heading">
             Welcome back, {profile?.full_name || 'Farmer'}! 👋
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
-            Here is your sustainable agricultural snapshot for <span className="font-semibold text-slate-800">{selectedFarm?.name || 'your farm'}</span>. Current season is <span className="font-semibold text-emerald-700">{selectedFarm?.current_season || 'Kharif (Monsoon)'}</span>.
+            Your crop protection & organic farming snapshot for{' '}
+            <span className="font-semibold text-slate-800">{selectedFarm?.name || 'your farm'}</span>.
+            Scout pests, follow IPM advice, and explore source-backed organic inputs.
           </p>
         </div>
 
-        {/* Quick Action Buttons */}
+        {/* Flagship Quick Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="primary"
             size="sm"
-            onClick={onOpenAddInput}
-            icon={<Package className="w-4 h-4" />}
+            onClick={onOpenRecordPestObservation}
+            icon={<Bug className="w-4 h-4" />}
           >
-            Add Input
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={onOpenAddActivity}
-            icon={<ClipboardList className="w-4 h-4" />}
-          >
-            Record Activity
+            Record Pest Observation
           </Button>
           <Button
             variant="secondary"
             size="sm"
-            onClick={onOpenAddCrop}
-            icon={<Sprout className="w-4 h-4" />}
+            onClick={onOpenPesticideAdvisory}
+            icon={<Shield className="w-4 h-4" />}
           >
-            Add Crop
+            Open Pesticide Advisory
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onOpenOrganicInputs}
+            icon={<Leaf className="w-4 h-4" />}
+          >
+            Explore Organic Inputs
           </Button>
         </div>
       </div>
@@ -111,123 +162,285 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* KPI Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Farms"
-          value={totalFarms}
-          subtext={`${totalAreaAcres.toFixed(1)} Total Acres Managed`}
+          title="Active Farms"
+          value={activeFarms.length}
+          subtext={`${farms.length} total farm records`}
           icon={<Trees className="w-5 h-5" />}
           accentColor="emerald"
         />
         <StatCard
-          title="Active Crop Cycles"
+          title="Active Crops"
           value={activeCrops.length}
-          subtext={`${crops.length} total cycles recorded`}
+          subtext={`${crops.length} total crop cycles`}
           icon={<Sprout className="w-5 h-5" />}
           accentColor="blue"
         />
         <StatCard
-          title="Sustainable Practices"
-          value={organicPracticesCount}
-          subtext="Manure, bio-inputs & mulch logs"
-          icon={<Leaf className="w-5 h-5" />}
-          accentColor="emerald"
+          title="Pest Observations"
+          value={totalPestObs}
+          subtext={`${highSeverityPests.length} high/critical severity`}
+          icon={<Bug className="w-5 h-5" />}
+          accentColor="rose"
         />
         <StatCard
-          title="Total Farm Operations Cost"
-          value={`₹${totalExpenses.toLocaleString('en-IN')}`}
-          subtext={`${activities.length} operations recorded`}
-          icon={<IndianRupee className="w-5 h-5" />}
+          title="Open Follow-ups"
+          value={openFollowUpsCount}
+          subtext={`${upcomingAppFollowups.length} pesticide applications pending`}
+          icon={<ClipboardList className="w-5 h-5" />}
           accentColor="amber"
         />
       </div>
 
-      {/* Two Column Layout: Weather & Agronomic Advisory + Recent Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (7 cols): Weather Widget */}
-        <div className="lg:col-span-7 space-y-6">
-          <WeatherWidget farm={selectedFarm} />
-
-          {/* Active Crops Summary Card */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 tracking-tight">Active Crops & Growth Status</h3>
-                <p className="text-xs text-slate-500">Monitoring vegetative & reproductive phases</p>
+      {/* Body 6-card grid: 2 flagship + 4 intelligence */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+        {/* 1. Pest & IPM Attention (Flagship Pillar 1) */}
+        <div className="bg-white rounded-2xl border border-rose-200/60 p-5 shadow-2xs ring-1 ring-rose-50">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                <Shield className="w-4 h-4" />
               </div>
-              <button
-                onClick={() => onTabChange('crops')}
-                className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
-              >
-                <span>Manage Crops</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight">Pest &amp; IPM Attention</h3>
+                <p className="text-[11px] text-slate-500">Scouting alerts &amp; follow-up actions</p>
+              </div>
+            </div>
+            <button
+              onClick={onOpenPesticideAdvisory}
+              className="text-[11px] font-semibold text-rose-700 hover:text-rose-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span>Open Advisory</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {highSeverityPests.length === 0 && upcomingAppFollowups.length === 0 ? (
+            <div className="py-5 text-center rounded-xl bg-rose-50/50 border border-rose-100/70">
+              <p className="text-xs font-semibold text-rose-700">No urgent pest alerts 🎉</p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Continue routine scouting. Record any new observation immediately.
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {highSeverityPests.slice(0, 3).map(p => (
+                <li key={p.id} className="flex items-start justify-between gap-2 p-2.5 rounded-xl bg-rose-50/70 border border-rose-100">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-slate-900 truncate">{p.pest_name}</span>
+                      <Badge variant={p.severity === 'critical' ? 'rose' : 'amber'} size="sm">
+                        {p.severity}
+                      </Badge>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">{p.symptoms}</p>
+                  </div>
+                </li>
+              ))}
+              {upcomingAppFollowups.slice(0, 2).map(a => (
+                <li key={a.id} className="flex items-start justify-between gap-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-100">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-slate-900 truncate">App: {a.product_name}</span>
+                      <Badge variant="amber" size="sm">follow-up</Badge>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Follow-up date: {a.follow_up_date || 'Not set'}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* 2. Organic Farming Progress (Flagship Pillar 2) */}
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50/40 rounded-2xl border border-emerald-200/60 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <Leaf className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight">Organic Farming Progress</h3>
+                <p className="text-[11px] text-slate-500">Source-backed inputs &amp; practices</p>
+              </div>
+            </div>
+            <button
+              onClick={onOpenOrganicInputs}
+              className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span>Browse Library</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-700 font-medium">Sustainable Practice Score</span>
+              <span className="font-extrabold text-emerald-800">{sustainableScore}%</span>
+            </div>
+            <div className="w-full bg-emerald-200/60 rounded-full h-2">
+              <div
+                className="bg-emerald-600 h-2 rounded-full transition-all"
+                style={{ width: `${sustainableScore}%` }}
+              />
             </div>
 
-            {activeCrops.length === 0 ? (
-              <p className="text-xs text-slate-500 py-4 text-center">No active crops registered yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {activeCrops.slice(0, 3).map(crop => (
-                  <div
-                    key={crop.id}
-                    className="p-3 rounded-xl bg-slate-50/80 border border-slate-100 flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900">{crop.crop_name}</span>
-                        {crop.variety && (
-                          <span className="text-[10px] text-slate-500">({crop.variety})</span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Planted: {crop.planting_date} • {crop.area} {crop.area_unit}
-                      </p>
-                    </div>
-                    <Badge variant="emerald" size="sm">
-                      {crop.growth_stage}
-                    </Badge>
-                  </div>
-                ))}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="bg-white/80 rounded-xl p-2.5 border border-emerald-100">
+                <div className="flex items-center gap-1">
+                  <FlaskConical className="w-3.5 h-3.5 text-emerald-700" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Organic Inputs</span>
+                </div>
+                <p className="text-lg font-extrabold text-emerald-900 mt-0.5">{organicInputs.length}</p>
+                <p className="text-[10px] text-slate-500">curated in library</p>
               </div>
-            )}
+              <div className="bg-white/80 rounded-xl p-2.5 border border-emerald-100">
+                <div className="flex items-center gap-1">
+                  <Shield className="w-3.5 h-3.5 text-emerald-700" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Practice Logs</span>
+                </div>
+                <p className="text-lg font-extrabold text-emerald-900 mt-0.5">{organicPracticeActivities.length}</p>
+                <p className="text-[10px] text-slate-500">organic applications</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onOpenAddCrop()}
+              className="w-full text-[11px] font-semibold px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-center cursor-pointer transition-colors"
+            >
+              Add Crop with Organic Practices →
+            </button>
           </div>
         </div>
 
-        {/* Right Column (5 cols): Operations Feed & Sustainability Highlights */}
-        <div className="lg:col-span-5 space-y-6">
-          <RecentActivitiesFeed
-            activities={activities}
-            onViewAll={() => onTabChange('activities')}
-            onRecordActivity={onOpenAddActivity}
-          />
+        {/* 3. Weather Widget (existing) */}
+        <WeatherWidget farm={selectedFarm} />
 
-          {/* Sustainability & Good Practices Tracker */}
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50/40 rounded-2xl border border-emerald-200/60 p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-900">
-                Sustainability Tracking
-              </h4>
+        {/* 4. Recent Activities Feed (existing) */}
+        <RecentActivitiesFeed
+          activities={activities}
+          onViewAll={() => onTabChange('activities')}
+          onRecordActivity={onOpenAddActivity}
+        />
+
+        {/* 5. Recent Farm Inputs (New Card) */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                <Package className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight">Recent Farm Inputs</h3>
+                <p className="text-[11px] text-slate-500">Fertilizers, pesticides &amp; amendments</p>
+              </div>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed mb-3">
-              Your farm maintains high organic compliance with active biomass mulching and microbial consortium inoculations.
-            </p>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between text-slate-700">
-                <span>Soil Organic Carbon Support</span>
-                <span className="font-bold text-emerald-800">Active (FYM / Mulch)</span>
+            <button
+              onClick={() => onTabChange('inputs')}
+              className="text-[11px] font-semibold text-indigo-700 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span>All Inputs</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {recentInputs.length === 0 ? (
+            <div className="py-5 text-center rounded-xl bg-slate-50 border border-slate-100">
+              <p className="text-xs font-semibold text-slate-600">No inputs recorded yet</p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Record pesticide, fertilizer, or organic-input purchases for traceability.
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {recentInputs.map(i => (
+                <li key={i.id} className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-100 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-slate-900 truncate">{i.product_name}</span>
+                      {i.category && (
+                        <Badge variant="indigo" size="sm">{i.category}</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-500">
+                      <CalendarDays className="w-3 h-3" />
+                      <span>{i.purchase_date || 'Date TBD'}</span>
+                      {i.quantity && (
+                        <>
+                          <span>•</span>
+                          <span>{i.quantity} {i.unit || ''}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {i.supplier_or_source && (
+                    <span className="text-[10px] text-slate-500 shrink-0 truncate max-w-[80px]">
+                      {i.supplier_or_source}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* 6. Soil Test Status (New Card) */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center">
+                <TestTubeDiagonal className="w-4 h-4" />
               </div>
-              <div className="w-full bg-emerald-200/50 rounded-full h-1.5">
-                <div className="bg-emerald-600 h-1.5 rounded-full w-4/5" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight">Soil &amp; Water Tests</h3>
+                <p className="text-[11px] text-slate-500">Laboratory reports &amp; analysis</p>
               </div>
-              <div className="flex items-center justify-between text-slate-700 pt-1">
-                <span>IPM Biological Priority</span>
-                <span className="font-bold text-emerald-800">100% Non-Chemical</span>
+            </div>
+            <button
+              onClick={() => onTabChange('tests')}
+              className="text-[11px] font-semibold text-teal-700 hover:text-teal-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span>All Tests</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="p-3 rounded-xl bg-teal-50/80 border border-teal-100">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800">Soil Tests</span>
               </div>
-              <div className="w-full bg-emerald-200/50 rounded-full h-1.5">
-                <div className="bg-emerald-600 h-1.5 rounded-full w-full" />
+              <p className="text-xl font-extrabold text-teal-900 mt-1">{soilTests.length}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                Latest: {latestSoil?.test_date || 'None'}
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-100">
+              <div className="flex items-center gap-1.5">
+                <Droplets className="w-3 h-3 text-blue-700" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800">Water Tests</span>
               </div>
+              <p className="text-xl font-extrabold text-blue-900 mt-1">{waterTests.length}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                Latest: {latestWater?.test_date || 'None'}
+              </p>
             </div>
           </div>
+
+          {soilTests.length === 0 && waterTests.length === 0 ? (
+            <div className="py-3 text-center rounded-xl bg-slate-50 border border-slate-100">
+              <p className="text-xs font-semibold text-slate-600">No lab reports yet</p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Upload soil/water tests to receive nutrient recommendations.
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={() => onTabChange('tests')}
+              className="w-full text-[11px] font-semibold px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-center cursor-pointer transition-colors"
+            >
+              View Reports &amp; Recommendations →
+            </button>
+          )}
         </div>
       </div>
     </div>

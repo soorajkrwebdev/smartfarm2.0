@@ -18,6 +18,8 @@ create table if not exists public.pest_observations (
   notes text,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
+);
+
 -- 2. IPM RECORDS (Advisory decisions and recommendations)
 create table if not exists public.ipm_records (
   id uuid primary key default uuid_generate_v4(),
@@ -49,20 +51,51 @@ create table if not exists public.pesticide_applications (
   area numeric not null check (area > 0),
   area_unit text not null default 'acres',
   application_method text not null,
+  source_reference text,
+  pre_harvest_interval_days numeric check (pre_harvest_interval_days >= 0),
+  re_entry_interval_hours numeric check (re_entry_interval_hours >= 0),
+  notes text,
+  follow_up_date date,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+-- 4. PESTICIDE ADVISORIES (Authoritative agricultural advisory knowledge base)
+create table if not exists public.pesticide_advisories (
+  id uuid primary key default uuid_generate_v4(),
+  crop text not null,
+  pest_or_disease text not null,
+  control_category text not null check (control_category in ('prevention', 'cultural', 'mechanical', 'biological', 'botanical', 'chemical')),
+  recommendation text not null,
+  active_ingredient text,
+  product_information text,
+  application_information text,
+  safety_information text,
+  source_name text not null,
+  source_url text,
+  last_verified date default current_date,
+  verification_status text default 'General Agricultural Information',
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
 -- Indexes
 create index if not exists idx_pest_obs_user on public.pest_observations(user_id);
 create index if not exists idx_pest_obs_farm on public.pest_observations(farm_id);
 create index if not exists idx_pest_obs_crop on public.pest_observations(crop_id);
-create index if not exists idx_pest_obs_date on public.pest_observations(observation_date);
+create index if not exists idx_pest_obs_date on public.pest_observations(observation_date desc);
 create index if not exists idx_ipm_records_user on public.ipm_records(user_id);
 create index if not exists idx_ipm_records_farm on public.ipm_records(farm_id);
 create index if not exists idx_pesticide_apps_user on public.pesticide_applications(user_id);
 create index if not exists idx_pesticide_apps_farm on public.pesticide_applications(farm_id);
+create index if not exists idx_pesticide_advisories_crop on public.pesticide_advisories(crop);
+create index if not exists idx_pesticide_advisories_pest on public.pesticide_advisories(pest_or_disease);
 
 -- ROW LEVEL SECURITY
 alter table public.pest_observations enable row level security;
 alter table public.ipm_records enable row level security;
 alter table public.pesticide_applications enable row level security;
+alter table public.pesticide_advisories enable row level security;
 
 -- Pest Observations Policies (Private to Farmer)
 create policy "Farmers can view own pest observations"
@@ -115,18 +148,17 @@ create policy "Farmers can delete own pesticide applications"
   on public.pesticide_applications for delete
   using (auth.uid() = user_id);
 
+-- Pesticide Advisories Policies (Public Read Access for all)
+create policy "Public can view pesticide advisories"
+  on public.pesticide_advisories for select
+  using (true);
+
 -- Updated-at Triggers
 create trigger tr_pest_observations_updated_at before update on public.pest_observations
   for each row execute procedure public.set_updated_at();
 
 create trigger tr_pesticide_applications_updated_at before update on public.pesticide_applications
   for each row execute procedure public.set_updated_at();
-  source_reference text,
-  pre_harvest_interval_days numeric check (pre_harvest_interval_days >= 0),
-  re_entry_interval_hours numeric check (re_entry_interval_hours >= 0),
-  notes text,
-  follow_up_date date,
-  created_at timestamptz default now() not null,
-  updated_at timestamptz default now() not null
-);
-);
+
+create trigger tr_pesticide_advisories_updated_at before update on public.pesticide_advisories
+  for each row execute procedure public.set_updated_at();

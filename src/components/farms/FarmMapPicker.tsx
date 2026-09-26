@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapPin, Crosshair } from 'lucide-react';
-import { Button } from '../common/Button';
 
 // Fix leaflet default marker icons in Vite/bundler environments
 delete (L.Icon.Default.prototype as any)._getIconUrl;

@@ -1,274 +1,446 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Badge } from '../../components/common/Badge';
-import { Briefcase, Search, MapPin, Users, Clock, Plus, Filter, Share2, Star } from 'lucide-react';
-import { useFarmData } from '../../contexts/FarmContext';
-
-interface FarmWorkPost {
-  id: string;
-  farmId: string;
-  farmName: string;
-  farmLocation: string;
-  title: string;
-  description: string;
-  workType: string;
-  startDate: string;
-  endDate: string;
-  estimatedWorkers: number;
-  status: string;
-  createdAt: string;
-  postedBy: string;
-}
-
-const DEMO_POSTS: FarmWorkPost[] = [
-  {
-    id: 'fw-001',
-    farmId: 'farm-001',
-    farmName: 'Green Canopy Organic Homestead',
-    farmLocation: 'Sakleshpur, Karnataka',
-    title: 'Arecanut Harvesting Help Needed',
-    description: 'Looking for 4-5 workers for arecanut harvesting over 2 days.',
-    workType: 'Harvesting',
-    startDate: '25 Sep 2026',
-    endDate: '26 Sep 2026',
-    estimatedWorkers: 5,
-    status: 'open',
-    createdAt: '23 Sep 2026',
-    postedBy: 'Ramesh Patel'
-  },
-  {
-    id: 'fw-002',
-    farmId: 'farm-002',
-    farmName: 'Evergreen Spice Farm',
-    farmLocation: 'Kodagu, Karnataka',
-    title: 'Coffee Pruning Season Work',
-    description: 'Seasonal coffee pruning work for 10 days.',
-    workType: 'Pruning',
-    startDate: '28 Sep 2026',
-    endDate: '07 Oct 2026',
-    estimatedWorkers: 8,
-    status: 'open',
-    createdAt: '23 Sep 2026',
-    postedBy: 'Lakshmi Nair'
-  },
-  {
-    id: 'fw-003',
-    farmId: 'farm-003',
-    farmName: 'Nature Basket Farm',
-    farmLocation: 'Wayanad, Kerala',
-    title: 'Banana Bunch Transportation',
-    description: 'Need help transporting 200+ banana bunches from field to storage.',
-    workType: 'Transport',
-    startDate: '24 Sep 2026',
-    endDate: '24 Sep 2026',
-    estimatedWorkers: 3,
-    status: 'open',
-    createdAt: '23 Sep 2026',
-    postedBy: 'Jose Thomas'
-  },
-];
+import { Button } from '../../components/common/Button';
+import {
+  Briefcase,
+  Search,
+  Users,
+  Clock,
+  Plus,
+  Filter,
+  Share2,
+  Phone,
+  MessageSquare,
+  Eye,
+  Trash2,
+} from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { FarmJob } from '../../types';
+import {
+  getPublicFarmJobs,
+  getFarmerJobs,
+  deleteFarmJob,
+  updateFarmJob,
+} from '../../services/farmJobService';
+import { CreateJobModal } from '../../components/farm-work/CreateJobModal';
+import { JobInquiryModal } from '../../components/farm-work/JobInquiryModal';
+import { ViewInquiriesModal } from '../../components/farm-work/ViewInquiriesModal';
 
 export const FarmWorkBoardPage: React.FC = () => {
-  const { farms } = useFarmData();
+  const { user } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<'public' | 'my-jobs'>('public');
   const [q, setQ] = useState('');
   const [workTypeFilter, setWorkTypeFilter] = useState('all');
-  const [posts] = useState<FarmWorkPost[]>(DEMO_POSTS);
 
-  const workTypes = ['all', 'Harvesting', 'Pruning', 'Weeding', 'Planting', 'Irrigation', 'Processing', 'Transport', 'Other'];
+  const [publicJobs, setPublicJobs] = useState<FarmJob[]>([]);
+  const [myJobs, setMyJobs] = useState<FarmJob[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredPosts = posts.filter(post => {
-    const matchesSearch = post.title.toLowerCase().includes(q.toLowerCase()) ||
-      post.description.toLowerCase().includes(q.toLowerCase()) ||
-      post.farmName.toLowerCase().includes(q.toLowerCase());
-    const matchesType = workTypeFilter === 'all' || post.workType === workTypeFilter;
-    return matchesSearch && matchesType && post.status === 'open';
+  // Modals state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedJobForInquiry, setSelectedJobForInquiry] = useState<FarmJob | null>(null);
+  const [selectedJobForInquiries, setSelectedJobForInquiries] = useState<FarmJob | null>(null);
+  const [showAllInquiriesModal, setShowAllInquiriesModal] = useState(false);
+
+  const workTypes = [
+    'all',
+    'Harvesting',
+    'Pruning',
+    'Weeding',
+    'Planting',
+    'Irrigation',
+    'Processing',
+    'Transport',
+    'Other',
+  ];
+
+  const fetchJobs = async () => {
+    setLoading(true);
+    const pub = await getPublicFarmJobs();
+    setPublicJobs(pub);
+
+    if (user) {
+      const mine = await getFarmerJobs(user.id);
+      setMyJobs(mine);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchJobs();
+  }, [user]);
+
+  const displayedJobs = activeTab === 'public' ? publicJobs : myJobs;
+
+  const filteredJobs = displayedJobs.filter(job => {
+    const matchesSearch =
+      job.title.toLowerCase().includes(q.toLowerCase()) ||
+      job.description.toLowerCase().includes(q.toLowerCase()) ||
+      (job.location && job.location.toLowerCase().includes(q.toLowerCase())) ||
+      (job.farm_name && job.farm_name.toLowerCase().includes(q.toLowerCase()));
+    const matchesType = workTypeFilter === 'all' || job.work_type === workTypeFilter;
+    return matchesSearch && matchesType;
   });
 
-  const getStatusColor = (status: string) => {
+  const handleCloseJob = async (jobId: string) => {
+    if (confirm('Are you sure you want to mark this position as closed?')) {
+      await updateFarmJob(jobId, { status: 'closed' });
+      fetchJobs();
+    }
+  };
+
+  const handleDeleteJob = async (jobId: string) => {
+    if (confirm('Are you sure you want to delete this job listing?')) {
+      await deleteFarmJob(jobId);
+      fetchJobs();
+    }
+  };
+
+  const getStatusBadge = (status: FarmJob['status']) => {
     switch (status) {
-      case 'open': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'in-progress': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'completed': return 'bg-slate-100 text-slate-600 border-slate-200';
-      case 'cancelled': return 'bg-rose-100 text-rose-700 border-rose-200';
-      default: return 'bg-slate-100 text-slate-600';
+      case 'open':
+        return <Badge variant="emerald" size="sm">Open</Badge>;
+      case 'in-progress':
+        return <Badge variant="amber" size="sm">In Progress</Badge>;
+      case 'filled':
+        return <Badge variant="blue" size="sm">Filled</Badge>;
+      case 'closed':
+      default:
+        return <Badge variant="slate" size="sm">Closed</Badge>;
     }
   };
 
   return (
-    <div className='space-y-6'>
-      <div className='flex items-center justify-between'>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className='text-xl font-bold text-slate-800'>Farm Work Board</h1>
-          <p className='text-sm text-slate-500 mt-0.5'>Find or post agricultural work opportunities</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-slate-800">Farm Work Board</h1>
+            <Badge variant="emerald" size="sm">
+              Public Community Board
+            </Badge>
+          </div>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Discover community agricultural tasks, connect directly with farms, or post labor opportunities.
+          </p>
         </div>
-        <Badge variant='emerald' size='sm'>Community Board</Badge>
-      </div>
 
-      <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        <div className='bg-white rounded-2xl border p-4'>
-          <div className='flex items-center gap-3'>
-            <div className='p-2 bg-emerald-100 rounded-xl'>
-              <Briefcase className='w-5 h-5 text-emerald-600' />
-            </div>
-            <div>
-              <p className='text-2xl font-bold'>{filteredPosts.length}</p>
-              <p className='text-xs text-slate-500'>Open Positions</p>
-            </div>
-          </div>
-        </div>
-        <div className='bg-white rounded-2xl border p-4'>
-          <div className='flex items-center gap-3'>
-            <div className='p-2 bg-blue-100 rounded-xl'>
-              <Users className='w-5 h-5 text-blue-600' />
-            </div>
-            <div>
-              <p className='text-2xl font-bold'>{posts.reduce((sum, p) => sum + p.estimatedWorkers, 0)}</p>
-              <p className='text-xs text-slate-500'>Workers Needed</p>
-            </div>
-          </div>
-        </div>
-        <div className='bg-white rounded-2xl border p-4'>
-          <div className='flex items-center gap-3'>
-            <div className='p-2 bg-amber-100 rounded-xl'>
-              <Star className='w-5 h-5 text-amber-600' />
-            </div>
-            <div>
-              <p className='text-2xl font-bold'>2</p>
-              <p className='text-xs text-slate-500'>Local Farms Posting</p>
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          {user && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAllInquiriesModal(true)}
+              className="text-xs"
+            >
+              <MessageSquare className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+              All Inquiries
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => {
+              if (!user) {
+                alert('Please sign in as a farmer to post a job listing.');
+                return;
+              }
+              setIsCreateModalOpen(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Post Farm Work
+          </Button>
         </div>
       </div>
 
-      <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
-        <div className='lg:col-span-1'>
-          <div className='bg-white rounded-2xl border p-4'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='font-bold'>Filter by Work Type</h3>
-              <Filter className='w-4 h-4 text-slate-400' />
+      {/* Tabs */}
+      {user && (
+        <div className="flex border-b border-slate-200">
+          <button
+            onClick={() => setActiveTab('public')}
+            className={`pb-3 px-4 font-semibold text-sm transition-colors border-b-2 ${
+              activeTab === 'public'
+                ? 'border-emerald-600 text-emerald-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Open Community Listings ({publicJobs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('my-jobs')}
+            className={`pb-3 px-4 font-semibold text-sm transition-colors border-b-2 ${
+              activeTab === 'my-jobs'
+                ? 'border-emerald-600 text-emerald-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            My Posted Listings ({myJobs.length})
+          </button>
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-100 rounded-xl">
+              <Briefcase className="w-5 h-5 text-emerald-600" />
             </div>
-            <div className='space-y-1.5'>
+            <div>
+              <p className="text-2xl font-bold text-slate-800">{publicJobs.length}</p>
+              <p className="text-xs text-slate-500">Active Work Openings</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-100 rounded-xl">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-slate-800">
+                {publicJobs.reduce((sum, j) => sum + (j.workers_needed || 1), 0)}
+              </p>
+              <p className="text-xs text-slate-500">Total Workers Needed</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-100 rounded-xl">
+              <MessageSquare className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-slate-800">Direct Inquiries</p>
+              <p className="text-xs text-slate-500">No Worker Account Required</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Layout: Filters + Listings */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Left Filter Sidebar */}
+        <div className="lg:col-span-1 space-y-4">
+          <div className="bg-white rounded-2xl border p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-sm text-slate-800">Work Category</h3>
+              <Filter className="w-4 h-4 text-slate-400" />
+            </div>
+            <div className="space-y-1">
               {workTypes.map(type => (
                 <button
                   key={type}
                   onClick={() => setWorkTypeFilter(type)}
-                  className='w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium cursor-pointer bg-slate-50 hover:bg-slate-100 text-slate-600'
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors ${
+                    workTypeFilter === type
+                      ? 'bg-emerald-600 text-white font-semibold'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
+                  }`}
                 >
-                  <span className='flex items-center gap-2'>
-                    {type === 'all' ? 'All Types' : type}
-                  </span>
+                  <span>{type === 'all' ? 'All Categories' : type}</span>
                 </button>
               ))}
             </div>
 
-            <div className='mt-4 pt-3 border-t'>
-              <h4 className='font-bold text-sm mb-2'>How it Works</h4>
-              <div className='space-y-2 text-xs text-slate-500'>
-                <div className='flex items-start gap-2'>
-                  <span className='w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0'>1</span>
-                  <span>Farmers post work needs</span>
-                </div>
-                <div className='flex items-start gap-2'>
-                  <span className='w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0'>2</span>
-                  <span>Workers discover opportunities</span>
-                </div>
-                <div className='flex items-start gap-2'>
-                  <span className='w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0'>3</span>
-                  <span>Connect directly</span>
-                </div>
-              </div>
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <h4 className="font-bold text-xs text-slate-700 uppercase tracking-wider mb-2">
+                Public Worker Access
+              </h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Agricultural workers and helpers can browse open opportunities and contact farmers directly without creating an account or storing personal logins.
+              </p>
             </div>
           </div>
         </div>
 
-        <div className='lg:col-span-3'>
-          <div className='flex items-center justify-between mb-4'>
-            <h3 className='font-bold'>Available Work Opportunities</h3>
-            <div className='relative w-64'>
-              <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400' />
+        {/* Right Listings Column */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* Search bar */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
-                type='text'
-                placeholder='Search posts...'
+                type="text"
+                placeholder="Search by job title, location, or crop..."
                 value={q}
                 onChange={e => setQ(e.target.value)}
-                className='pl-9 pr-3 py-1.5 text-sm bg-slate-50 rounded-xl border border-slate-200 w-full focus:border-emerald-500 outline-none'
+                className="pl-9 pr-3 py-2 text-sm bg-white rounded-xl border border-slate-200 w-full focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none shadow-sm"
               />
             </div>
           </div>
 
-          {filteredPosts.length > 0 ? (
-            <div className='space-y-3'>
-              {filteredPosts.map(post => (
-                <div key={post.id} className='bg-white rounded-2xl border p-4'>
-                  <div className='flex items-start justify-between mb-3'>
+          {/* Job listings */}
+          {loading ? (
+            <div className="py-16 text-center text-slate-500">
+              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              Loading farm work listings...
+            </div>
+          ) : filteredJobs.length > 0 ? (
+            <div className="space-y-4">
+              {filteredJobs.map(job => (
+                <div
+                  key={job.id}
+                  className="bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
-                      <div className='flex items-center gap-2 mb-1'>
-                        <Badge className={getStatusColor(post.status)}>
-                          {post.status === 'open' ? 'Open' : post.status}
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        {getStatusBadge(job.status)}
+                        <Badge variant="slate" size="sm">
+                          {job.work_type}
                         </Badge>
-                        <Badge variant='slate' size='sm'>{post.workType}</Badge>
+                        {job.wage_rate && job.wage_rate > 0 && (
+                          <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center">
+                            ₹{job.wage_rate}/{job.wage_unit}
+                          </span>
+                        )}
                       </div>
-                      <h4 className='font-bold text-slate-800'>{post.title}</h4>
+                      <h3 className="font-bold text-base text-slate-800">{job.title}</h3>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        {job.farm_name || 'Verified Farm'} • {job.location}
+                      </p>
                     </div>
-                    <button className='p-2 hover:bg-emerald-50 rounded-xl text-emerald-600' title='Share'>
-                      <Share2 className='w-4 h-4' />
+
+                    <button
+                      className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600"
+                      title="Share job"
+                      onClick={() => {
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(window.location.href);
+                          alert('Job link copied to clipboard!');
+                        }
+                      }}
+                    >
+                      <Share2 className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <div className='bg-slate-50 rounded-xl p-3 mb-3'>
-                    <p className='text-sm text-slate-600'>{post.description}</p>
-                  </div>
+                  <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl mb-3 leading-relaxed">
+                    {job.description}
+                  </p>
 
-                  <div className='flex items-center justify-between flex-wrap gap-2'>
-                    <div className='flex items-center gap-3'>
-                      <div className='flex items-center gap-1 text-xs text-slate-500'>
-                        <MapPin className='w-3.5 h-3.5' />
-                        <span className='truncate max-w-[120px]'>{post.farmLocation}</span>
+                  <div className="flex items-center justify-between flex-wrap gap-3 pt-2 text-xs text-slate-500 border-t border-slate-100">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-emerald-600" />
+                        <span className="font-medium text-slate-700">
+                          {job.workers_needed} {job.workers_needed === 1 ? 'worker' : 'workers'} needed
+                        </span>
                       </div>
-                      <div className='flex items-center gap-1 text-xs text-slate-500'>
-                        <Users className='w-3.5 h-3.5' />
-                        <span>{post.estimatedWorkers} workers</span>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-slate-400" />
+                        <span>
+                          {job.start_date}
+                          {job.end_date ? ` to ${job.end_date}` : ' onwards'}
+                        </span>
                       </div>
+                      {job.contact_phone && (
+                        <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
+                          <Phone className="w-3.5 h-3.5" />
+                          <a href={`tel:${job.contact_phone}`} className="hover:underline">
+                            {job.contact_phone}
+                          </a>
+                        </div>
+                      )}
                     </div>
-                    <div className='flex items-center gap-3 text-xs'>
-                      <span className='text-slate-400'>
-                        <Clock className='w-3.5 h-3.5 inline mr-1' />
-                        {post.startDate} - {post.endDate}
-                      </span>
-                      <span className='text-slate-600'>Posted by {post.postedBy}</span>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      {activeTab === 'my-jobs' || (user && job.user_id === user.id) ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={() => setSelectedJobForInquiries(job)}
+                          >
+                            <Eye className="w-3.5 h-3.5 mr-1" />
+                            Inquiries ({job.inquiry_count || 0})
+                          </Button>
+                          {job.status === 'open' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-rose-600 hover:bg-rose-50 text-xs"
+                              onClick={() => handleCloseJob(job.id)}
+                            >
+                              Close
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-slate-400 hover:text-rose-600 text-xs"
+                            onClick={() => handleDeleteJob(job.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => setSelectedJobForInquiry(job)}
+                          className="text-xs bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 mr-1" />
+                          Apply / Inquire
+                        </Button>
+                      )}
                     </div>
                   </div>
-
-                  {post.farmId === farms[0]?.id && (
-                    <div className='mt-3 pt-3 border-t flex items-center gap-2'>
-                      <span className='text-[10px] text-emerald-600'>Your farm</span>
-                      <button className='text-[10px] px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md'>Edit Post</button>
-                      <button className='text-[10px] px-2 py-1 bg-rose-100 text-rose-700 rounded-md ml-auto'>Close Position</button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
           ) : (
-            <EmptyState icon={<Briefcase className='w-8 h-8' />} title='No work posts found' description='Try adjusting your filters.' />
+            <EmptyState
+              icon={<Briefcase className="w-10 h-10 text-slate-400" />}
+              title={activeTab === 'my-jobs' ? 'No jobs posted yet' : 'No farm work posts found'}
+              description={
+                activeTab === 'my-jobs'
+                  ? 'Click "Post Farm Work" to create an opening for seasonal helpers or specialists.'
+                  : 'Check back soon or adjust your category and search filters.'
+              }
+            />
           )}
         </div>
       </div>
 
-      <div className='bg-emerald-800 rounded-3xl p-5 text-white flex items-center justify-between'>
-        <div className='flex items-start gap-4'>
-          <Briefcase className='w-6 h-6 text-emerald-200' />
-          <div>
-            <h3 className='font-bold text-sm'>Post a Work Opportunity</h3>
-            <p className='text-sm text-emerald-200/80 mt-1'>
-              Help your community find work on your farm.
-            </p>
-          </div>
-        </div>
-        <button className='px-4 py-2 bg-emerald-600 rounded-xl text-sm font-semibold'>
-          <Plus className='w-4 h-4 inline mr-1' /> Post Work
-        </button>
-      </div>
+      {/* Modals */}
+      <CreateJobModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onJobCreated={fetchJobs}
+      />
+
+      {selectedJobForInquiry && (
+        <JobInquiryModal
+          isOpen={!!selectedJobForInquiry}
+          onClose={() => setSelectedJobForInquiry(null)}
+          job={selectedJobForInquiry}
+        />
+      )}
+
+      {selectedJobForInquiries && (
+        <ViewInquiriesModal
+          isOpen={!!selectedJobForInquiries}
+          onClose={() => setSelectedJobForInquiries(null)}
+          jobId={selectedJobForInquiries.id}
+          jobTitle={selectedJobForInquiries.title}
+        />
+      )}
+
+      {showAllInquiriesModal && (
+        <ViewInquiriesModal
+          isOpen={showAllInquiriesModal}
+          onClose={() => setShowAllInquiriesModal(false)}
+        />
+      )}
     </div>
   );
 };

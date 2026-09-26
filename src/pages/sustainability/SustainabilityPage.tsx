@@ -1,11 +1,9 @@
 import React from 'react';
 import { useFarmData } from '../../contexts/FarmContext';
-import { Badge } from '../../components/common/Badge';
-import { ShieldCheck, CheckCircle, TrendingUp, Leaf, Recycle, Bug, TestTube } from 'lucide-react';
+import { ShieldCheck, TrendingUp, Leaf, Recycle, Bug, TestTube } from 'lucide-react';
 
 export const SustainabilityPage: React.FC = () => {
-  const { farms, crops, activities, inputs, pestObservations, ipmRecords, soilTests, waterTests, farmWaste, compostBatches } = useFarmData();
-  const farm = farms[0];
+  const { farms, activities, inputs, ipmRecords, soilTests, farmWaste, compostBatches } = useFarmData();
 
   const organicActivities = activities.filter(a => ['Organic manure', 'Biofertilizer application', 'Mulching', 'Weeding'].includes(a.activity_type));
   const organicInputs = inputs.filter(i => ['Organic manure', 'Biofertilizers', 'Biological inputs', 'Botanical inputs'].includes(i.category));
@@ -18,7 +16,7 @@ export const SustainabilityPage: React.FC = () => {
     { label: 'Waste Recycled', value: wasteRecycled, unit: 'kg', icon: Recycle, color: 'blue', description: 'Crop residue and biomass converted to compost' },
     { label: 'IPM Activities', value: ipmRecords.length, icon: Bug, color: 'indigo', description: 'Biological and botanical pest management decisions' },
     { label: 'Soil Tests Conducted', value: soilTests.length, icon: TestTube, color: 'purple', description: 'Laboratory soil analysis records' },
-    { label: 'Compost Produced', value: compostBatches.filter(c => c.status === 'finished').reduce((s, c) => s + (c.volume_finished || 0), 0), unit: 'kg', icon: Leaf, color: 'green', description: 'Finished compost batches volume' },
+    { label: 'Compost Produced', value: compostBatches.filter(c => c.status === 'finished').reduce((s, c) => s + (c.finished_quantity || 0), 0), unit: 'kg', icon: Leaf, color: 'green', description: 'Finished compost batches volume' },
   ];
 
   return (

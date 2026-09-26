@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { WeatherData } from '../types';
 
-// Map WMO Weather interpretation codes (WW) to human descriptions
+// Map WMO Weather interpretation codes to human descriptions
 function getWeatherCondition(code: number): string {
   if (code === 0) return 'Clear Sky';
   if (code === 1) return 'Mainly Clear';
@@ -16,104 +16,131 @@ function getWeatherCondition(code: number): string {
   return 'Fair Weather';
 }
 
-const FALLBACK_WEATHER: WeatherData = {
-  temperature: 28,
-  humidity: 78,
-  precipitation: 0.2,
-  windSpeed: 8.5,
-  condition: 'Partly Cloudy',
-  isDay: true,
-  dailyForecast: [
-    { date: 'Today', dayName: 'Today', maxTemp: 31, minTemp: 22, condition: 'Partly Cloudy', rainProb: 20 },
-    { date: 'Tomorrow', dayName: 'Tomorrow', maxTemp: 29, minTemp: 21, condition: 'Light Showers', rainProb: 65 },
-    { date: 'Day 3', dayName: 'Day 3', maxTemp: 28, minTemp: 21, condition: 'Scattered Rain', rainProb: 80 },
-    { date: 'Day 4', dayName: 'Day 4', maxTemp: 30, minTemp: 22, condition: 'Fair Weather', rainProb: 15 },
-  ],
-};
-
-export function useWeather(latitude?: number, longitude?: number) {
+export function useWeather(latitude?: number | null, longitude?: number | null) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Default to central agricultural region if no coords provided (e.g. 13.6937, 75.2415)
-    const lat = latitude ?? 13.6937;
-    const lon = longitude ?? 75.2415;
+    // Do NOT use a hardcoded fallback — if no valid coordinates, show empty state
+    if (
+      latitude === undefined ||
+      latitude === null ||
+      longitude === undefined ||
+      longitude === null ||
+      isNaN(latitude) ||
+      isNaN(longitude)
+    ) {
+      setWeather(null);
+      setError('Add a farm location to view weather.');
+      setLoading(false);
+      return;
+    }
 
     let isMounted = true;
     setLoading(true);
+    setError(null);
 
     const fetchWeather = async () => {
+      const lat = latitude;
+      const lon = longitude;
+
       try {
-        const cacheKey = `weather_${lat.toFixed(3)}_${lon.toFixed(3)}`;
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          // 15-minute cache
-          if (Date.now() - parsed.timestamp < 15 * 60 * 1000) {
-            if (isMounted) {
-              setWeather(parsed.data);
-              setLoading(false);
+        const cacheKey = `smartfarm_weather_${lat.toFixed(3)}_${lon.toFixed(3)}`;
+        try {
+          const cached = sessionStorage.getItem(cacheKey);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Date.now() - parsed.timestamp < 15 * 60 * 1000) {
+              if (isMounted) {
+                setWeather(parsed.data);
+                setLoading(false);
+              }
               return;
             }
           }
+        } catch {
+          // Ignore cache errors
         }
 
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,is_day,precipitation,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=5`;
+        const url =
+          `https://api.open-meteo.com/v1/forecast` +
+          `?latitude=${lat}&longitude=${lon}` +
+          `&current=temperature_2m,relative_humidity_2m,is_day,precipitation,rain,weather_code,wind_speed_10m` +
+          `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum` +
+          `&timezone=auto&forecast_days=5`;
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Failed to fetch Open-Meteo weather');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) throw new Error(`Open-Meteo returned ${res.status}`);
         const data = await res.json();
 
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const dailyForecast = (data.daily?.time || []).slice(0, 4).map((timeStr: string, idx: number) => {
-          const d = new Date(timeStr);
-          const dayName = idx === 0 ? 'Today' : idx === 1 ? 'Tomorrow' : dayNames[d.getDay()];
-          return {
-            date: timeStr,
-            dayName,
-            maxTemp: Math.round(data.daily.temperature_2m_max[idx]),
-            minTemp: Math.round(data.daily.temperature_2m_min[idx]),
-            condition: getWeatherCondition(data.daily.weather_code[idx]),
-            rainProb: data.daily.precipitation_probability_max[idx] ?? 0,
-          };
-        });
+        const dailyForecast = (data.daily?.time || []).slice(0, 5).map(
+          (timeStr: string, idx: number) => {
+            const d = new Date(timeStr);
+            const dayName =
+              idx === 0 ? 'Today' : idx === 1 ? 'Tomorrow' : dayNames[d.getDay()];
+            return {
+              date: timeStr,
+              dayName,
+              maxTemp: Math.round(data.daily.temperature_2m_max[idx]),
+              minTemp: Math.round(data.daily.temperature_2m_min[idx]),
+              condition: getWeatherCondition(data.daily.weather_code[idx]),
+              rainProb: data.daily.precipitation_probability_max[idx] ?? 0,
+              precipitationSum: data.daily.precipitation_sum?.[idx] ?? 0,
+            };
+          }
+        );
 
         const weatherResult: WeatherData = {
-          temperature: Math.round(data.current?.temperature_2m ?? 28),
-          humidity: Math.round(data.current?.relative_humidity_2m ?? 70),
-          precipitation: data.current?.precipitation ?? 0,
-          windSpeed: Math.round(data.current?.wind_speed_10m ?? 8),
+          temperature: Math.round(data.current?.temperature_2m ?? 0),
+          humidity: Math.round(data.current?.relative_humidity_2m ?? 0),
+          precipitation: Number(data.current?.precipitation ?? 0),
+          rain: Number(data.current?.rain ?? 0),
+          rainProbability: Number(data.daily?.precipitation_probability_max?.[0] ?? 0),
+          windSpeed: Math.round(data.current?.wind_speed_10m ?? 0),
           condition: getWeatherCondition(data.current?.weather_code ?? 0),
           isDay: Boolean(data.current?.is_day ?? 1),
+          source: 'Open-Meteo API (open-meteo.com) — Farm-location weather forecast',
+          fetchedAt: new Date().toISOString(),
+          coordinates: { latitude: lat, longitude: lon },
           dailyForecast,
         };
 
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          data: weatherResult,
-          timestamp: Date.now(),
-        }));
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({
+            data: weatherResult,
+            timestamp: Date.now(),
+          }));
+        } catch {
+          // Ignore
+        }
 
         if (isMounted) {
           setWeather(weatherResult);
           setLoading(false);
         }
       } catch (err: any) {
-        console.warn('Weather API notice:', err.message);
+        console.warn('[useWeather] Fetch error:', err.message);
         if (isMounted) {
-          setWeather(FALLBACK_WEATHER);
-          setError(err.message);
+          setWeather(null);
+          setError(
+            err.name === 'AbortError'
+              ? 'Weather service timed out. Check your connection and try again.'
+              : 'Unable to retrieve forecast for these coordinates.'
+          );
           setLoading(false);
         }
       }
     };
 
     fetchWeather();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [latitude, longitude]);
 
   return { weather, loading, error };

@@ -4,10 +4,10 @@ import { Input } from '../components/common/Input';
 import { Select } from '../components/common/Select';
 import { Button } from '../components/common/Button';
 import { FarmingType } from '../types';
-import { UserCheck, Database, Check, Copy, Shield, Sparkles, MapPin } from 'lucide-react';
+import { Database, Check, Copy } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
-  const { profile, updateProfile, isConfigured, isDemoMode, toggleDemoMode } = useAuth();
+  const { profile, updateProfile, isConfigured } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -153,7 +153,7 @@ export const ProfilePage: React.FC = () => {
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Current Mode:</span>
             <span className="font-bold text-emerald-400">
-              {isConfigured && !isDemoMode ? 'Live Supabase Connected' : 'Local Sandbox (Demo Storage)'}
+              {isConfigured ? 'Live Supabase Connected' : 'Supabase Not Configured'}
             </span>
           </div>
           <div className="flex items-center justify-between">

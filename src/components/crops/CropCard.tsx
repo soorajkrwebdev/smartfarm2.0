@@ -2,7 +2,7 @@ import React from 'react';
 import { FarmCrop, CropActivity } from '../../types';
 import { Badge } from '../common/Badge';
 import { CropTimeline } from './CropTimeline';
-import { Sprout, Calendar, Trees, Edit3, Trash2, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { Trees, Edit3, Trash2, PlusCircle } from 'lucide-react';
 
 interface CropCardProps {
   crop: FarmCrop;

@@ -6,8 +6,8 @@ import { ActivityFormModal } from '../components/activities/ActivityFormModal';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { EmptyState } from '../components/common/EmptyState';
 import { Button } from '../components/common/Button';
-import { FarmCrop, GrowthStage } from '../types';
-import { Sprout, Plus, Search, Filter } from 'lucide-react';
+import { FarmCrop } from '../types';
+import { Sprout, Plus, Search } from 'lucide-react';
 
 export const CropsPage: React.FC = () => {
   const { crops, farms, activities, deleteCrop, selectedFarmId } = useFarmData();

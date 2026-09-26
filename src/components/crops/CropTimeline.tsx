@@ -1,6 +1,6 @@
 import React from 'react';
 import { CropActivity } from '../../types';
-import { CheckCircle2, Circle, Clock } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 interface CropTimelineProps {
   growthStage: string;

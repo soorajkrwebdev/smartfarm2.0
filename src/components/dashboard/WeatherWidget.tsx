@@ -1,6 +1,6 @@
 import React from 'react';
 import { useWeather } from '../../hooks/useWeather';
-import { CloudSun, Droplets, Wind, CloudRain, Sun, Compass } from 'lucide-react';
+import { Droplets, Wind, CloudRain } from 'lucide-react';
 import { Farm } from '../../types';
 
 interface WeatherWidgetProps {

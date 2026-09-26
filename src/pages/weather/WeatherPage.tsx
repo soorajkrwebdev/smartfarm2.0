@@ -5,7 +5,6 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { MapPin, Search, Plus, Droplets, Wind, CloudRain } from 'lucide-react';
-import { Farm } from '../../types';
 
 export const WeatherPage: React.FC = () => {
   const { farms } = useFarmData();
@@ -13,7 +12,7 @@ export const WeatherPage: React.FC = () => {
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
 
   const selectedFarm = selectedFarmId ? farms.find(f => f.id === selectedFarmId) : null;
-  const { weather, loading } = useWeather(selectedFarm?.latitude, selectedFarm?.longitude);
+  const { weather, loading: _weatherLoading } = useWeather(selectedFarm?.latitude, selectedFarm?.longitude);
 
   const filteredFarms = farms.filter(f =>
     f.name.toLowerCase().includes(q.toLowerCase()) ||
@@ -50,7 +49,7 @@ export const WeatherPage: React.FC = () => {
             {filteredFarms.length > 0 ? (
               <div className='space-y-1.5 max-h-64 overflow-y-auto'>
                 {filteredFarms.map(farm => {
-                  const isSel = selectedFarmId === farm.id;
+                  const _isSel = selectedFarmId === farm.id;
                   return (
                     <div key={farm.id} onClick={() => setSelectedFarmId(farm.id)}
                       className='rounded-xl border p-2 cursor-pointer bg-white border-slate-200'>

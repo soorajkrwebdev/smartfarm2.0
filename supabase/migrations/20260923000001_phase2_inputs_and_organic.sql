@@ -52,7 +52,7 @@ create table if not exists public.organic_inputs (
   source_name text not null,
   source_url text,
   last_verified_date date default current_date,
-  verification_status text default 'Verified Authoritative',
+  verification_status text default 'Unverified / For Review',
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );

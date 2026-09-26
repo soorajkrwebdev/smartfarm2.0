@@ -3,29 +3,23 @@ import {
   Leaf,
   Sprout,
   ShieldCheck,
-  Trees,
   CloudSun,
   TrendingUp,
   Briefcase,
   BookOpen,
   ArrowRight,
-  Sparkles,
   CheckCircle,
-  Cpu,
-  BarChart,
-  Lock,
-  Compass
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 
 interface LandingPageProps {
   onGoToAuth: (mode: 'login' | 'register') => void;
-  onExploreDemo: () => void;
+  onExploreDemo?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onGoToAuth,
-  onExploreDemo,
 }) => {
   const [activeTab, setActiveTab] = useState<'organic' | 'ipm' | 'weather' | 'market' | 'work' | 'knowledge'>('organic');
 
@@ -97,10 +91,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <Button
               variant="outline"
               size="lg"
-              onClick={onExploreDemo}
+              onClick={() => onGoToAuth('login')}
               className="w-full sm:w-auto border-emerald-600/30 text-emerald-800 hover:bg-emerald-50"
             >
-              Explore Live Demo Dashboard
+              Sign In to SmartFarm
             </Button>
           </div>
 

@@ -3,11 +3,8 @@ import {
   Trees,
   Plus,
   ChevronDown,
-  Sparkles,
   Database,
-  CloudSun,
   Menu,
-  X,
   Sprout,
   ClipboardList,
   Package
@@ -31,11 +28,11 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAddCrop,
   onOpenAddActivity,
   onOpenAddInput,
-  onTabChange,
+  onTabChange: _onTabChange,
   onToggleMobileDrawer,
 }) => {
   const { farms, selectedFarmId, setSelectedFarmId, selectedFarm } = useFarmData();
-  const { isConfigured, isDemoMode, toggleDemoMode } = useAuth();
+  const { isConfigured } = useAuth();
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
   const [farmMenuOpen, setFarmMenuOpen] = useState(false);
 
@@ -115,27 +112,19 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Sandbox Mode Notice / Quick Actions / Settings */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Supabase / Sandbox Mode Switch */}
+        {/* Database state indicator */}
         {isConfigured ? (
-          <button
-            onClick={() => toggleDemoMode(!isDemoMode)}
-            className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-colors ${
-              !isDemoMode
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-            }`}
-            title="Click to toggle between Live Supabase and Local Sandbox mode"
-          >
+          <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
             <Database className="w-3.5 h-3.5" />
-            <span>{!isDemoMode ? 'Supabase Connected' : 'Sandbox Mode'}</span>
-          </button>
+            <span>Supabase Connected</span>
+          </span>
         ) : (
-          <span 
+          <span
             className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200 cursor-help"
-            title="Supabase keys not yet configured in .env; running in Local Sandbox mode with PostgreSQL schema ready."
+            title="Supabase keys not configured in .env"
           >
             <Database className="w-3.5 h-3.5 text-amber-600" />
-            <span>Local Evaluation Mode</span>
+            <span>Not Configured</span>
           </span>
         )}
 

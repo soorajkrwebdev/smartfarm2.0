@@ -1,8 +1,6 @@
 import React from 'react';
 import { CropActivity } from '../../types';
-import { Badge } from '../common/Badge';
 import { ArrowRight, ClipboardList, Calendar } from 'lucide-react';
-
 interface RecentActivitiesFeedProps {
   activities: CropActivity[];
   onViewAll: () => void;

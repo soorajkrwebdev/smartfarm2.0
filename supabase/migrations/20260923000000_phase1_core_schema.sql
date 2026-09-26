@@ -196,11 +196,14 @@ begin
   )
   on conflict (id) do update set
     full_name = excluded.full_name,
-    phone = coalesce(excluded.phone, profiles.phone),
+    phone = coalesce(excluded.phone, public.profiles.phone),
     updated_at = now();
   return new;
+exception
+  when others then
+    return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = '';
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -214,7 +217,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$ language plpgsql set search_path = '';
 
 create trigger tr_profiles_updated_at before update on public.profiles
   for each row execute procedure public.set_updated_at();

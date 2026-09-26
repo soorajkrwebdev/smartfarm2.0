@@ -9,7 +9,7 @@ interface StatCardProps {
     value: string;
     isPositive?: boolean;
   };
-  accentColor?: 'emerald' | 'amber' | 'blue' | 'indigo';
+  accentColor?: 'emerald' | 'amber' | 'blue' | 'indigo' | 'rose';
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -25,6 +25,7 @@ export const StatCard: React.FC<StatCardProps> = ({
     amber: 'bg-amber-50 text-amber-600 border-amber-100',
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
     indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    rose: 'bg-rose-50 text-rose-600 border-rose-100',
   };
 
   return (

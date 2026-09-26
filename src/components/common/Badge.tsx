@@ -4,7 +4,7 @@ import { twMerge } from 'tailwind-merge';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'emerald' | 'amber' | 'blue' | 'slate' | 'rose' | 'indigo' | 'purple';
+  variant?: 'emerald' | 'amber' | 'blue' | 'slate' | 'rose' | 'indigo' | 'purple' | 'teal';
   size?: 'sm' | 'md';
   icon?: React.ReactNode;
   className?: string;
@@ -30,6 +30,7 @@ export const Badge: React.FC<BadgeProps> = ({
     rose: 'bg-rose-50 text-rose-700 border border-rose-200/60',
     indigo: 'bg-indigo-50 text-indigo-700 border border-indigo-200/60',
     purple: 'bg-purple-50 text-purple-700 border border-purple-200/60',
+    teal: 'bg-teal-50 text-teal-700 border border-teal-200/60',
   };
 
   return (

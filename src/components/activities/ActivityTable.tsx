@@ -1,7 +1,7 @@
 import React from 'react';
 import { CropActivity, ActivityType } from '../../types';
 import { Badge } from '../common/Badge';
-import { Edit3, Trash2, Calendar, Trees, Sprout, IndianRupee } from 'lucide-react';
+import { Edit3, Trash2 } from 'lucide-react';
 
 interface ActivityTableProps {
   activities: CropActivity[];

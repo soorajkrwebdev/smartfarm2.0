@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Select } from '../components/common/Select';
-import { Leaf, Lock, Mail, User, Phone, MapPin, Sparkles, ArrowLeft } from 'lucide-react';
+import { Leaf, Lock, Mail, User, Phone, ArrowLeft } from 'lucide-react';
 import { FarmingType } from '../types';
 
 interface AuthPageProps {
@@ -15,7 +15,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   initialMode = 'login',
   onBackToLanding,
 }) => {
-  const { signIn, signUp, loading: authLoading, isDemoMode, isConfigured } = useAuth();
+  const { signIn, signUp } = useAuth();
   const [isRegister, setIsRegister] = useState(initialMode === 'register');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [phone, setPhone] = useState('');
   const [state, setState] = useState('Karnataka');
   const [district, setDistrict] = useState('Shimoga');
-  const [village, setVillage] = useState('Thirthahalli');
   const [farmingType, setFarmingType] = useState<FarmingType>('organic');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,7 +53,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         phone: phone.trim() || undefined,
         state,
         district,
-        village,
         farmingType,
       });
 
@@ -72,13 +70,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         setError(res.error);
       }
     }
-    setLoading(false);
-  };
-
-  const handleDemoSignIn = async () => {
-    setLoading(true);
-    setError(null);
-    await signIn('ramesh.patel@smartfarm.org', 'demo-password-123');
     setLoading(false);
   };
 
@@ -228,19 +219,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </div>
           </form>
 
-          {/* Quick Demo Sign In Button */}
-          <div className="mt-6 pt-5 border-t border-slate-100 text-center">
-            <p className="text-xs text-slate-400 mb-2">Want to evaluate without typing?</p>
-            <button
-              type="button"
-              onClick={handleDemoSignIn}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>One-Click Sign In (Demo Farmer)</span>
-            </button>
-          </div>
+          {/* Password reset hint */}
+          {!isRegister && (
+            <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+              <p className="text-xs text-slate-400">
+                Forgot your password?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    // handled by the AuthPage reset flow below if email is entered
+                    setError('Enter your email above and use "Forgot Password" — this feature coming soon.');
+                  }}
+                  className="text-emerald-700 font-semibold hover:underline cursor-pointer"
+                >
+                  Reset Password
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
