@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import {
+  checkSupabaseConnection,
+  connectionUiLabel,
+  type ConnectionUiStatus,
+  type SupabaseHealthResult,
+} from '../lib/supabaseHealth';
 import { UserProfile, FarmingType } from '../types';
 
 interface SignUpData {
@@ -14,12 +20,20 @@ interface SignUpData {
   farmingType?: FarmingType;
 }
 
+export interface ConnectionState {
+  status: ConnectionUiStatus;
+  label: string;
+  detail: string;
+  code: string;
+}
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
   isConfigured: boolean;
+  connection: ConnectionState;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (data: SignUpData) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -29,13 +43,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const checkingConnection: ConnectionState = {
+  status: 'checking',
+  label: connectionUiLabel('checking'),
+  detail: 'Checking connection...',
+  code: 'checking',
+};
+
+function healthToConnection(result: SupabaseHealthResult): ConnectionState {
+  return {
+    status: result.status,
+    label: result.label,
+    detail: result.message,
+    code: result.code,
+  };
+}
+
+function notConfiguredAuthError(connection: ConnectionState): string {
+  if (connection.detail) return connection.detail;
+  return 'Configuration missing: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY) in .env.';
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connection, setConnection] = useState<ConnectionState>(checkingConnection);
 
-  // Load profile from Supabase
   const fetchProfile = async (userId: string, email?: string) => {
     if (!supabase) return;
     try {
@@ -43,26 +78,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('[AuthContext] Error fetching profile:', error.message);
+        if (error.code === '42501' || error.message.toLowerCase().includes('permission')) {
+          setConnection({
+            status: 'permission_error',
+            label: connectionUiLabel('permission_error'),
+            detail: `Database permission error while loading profile: ${error.message}`,
+            code: 'permission_error',
+          });
+        }
+        return;
       }
 
       if (data) {
+        if (data.id !== userId) {
+          console.error('[AuthContext] Profile id does not match auth.uid()');
+          return;
+        }
         setProfile({ ...data, email });
-      } else {
-        // Profile row not yet created (trigger may still be in flight on first login)
-        const fallback: UserProfile = {
-          id: userId,
-          email,
-          full_name: 'Farmer',
-          preferred_language: 'en',
-          farming_type: 'mixed',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setProfile(fallback);
+        return;
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const meta = sessionData.session?.user.user_metadata ?? {};
+      const insertPayload = {
+        id: userId,
+        full_name: (meta.full_name as string) || 'Farmer',
+        phone: (meta.phone as string) || null,
+        state: (meta.state as string) || null,
+        district: (meta.district as string) || null,
+        village: (meta.village as string) || null,
+        preferred_language: (meta.preferred_language as string) || 'en',
+        farming_type: (meta.farming_type as FarmingType) || 'mixed',
+      };
+
+      const { data: created, error: insertError } = await supabase
+        .from('profiles')
+        .insert(insertPayload)
+        .select('*')
+        .single();
+
+      if (insertError) {
+        console.error('[AuthContext] Profile insert failed:', insertError.message);
+        return;
+      }
+
+      if (created && created.id === userId) {
+        setProfile({ ...created, email });
       }
     } catch (err) {
       console.error('[AuthContext] Failed to load profile:', err);
@@ -70,43 +135,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) {
-      // Supabase not configured — app shows unconfigured state
-      setLoading(false);
-      return;
-    }
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email).then(() => setLoading(false));
-      } else {
+    const init = async () => {
+      setConnection(checkingConnection);
+
+      const health = await checkSupabaseConnection();
+      if (cancelled) return;
+
+      setConnection(healthToConnection(health));
+
+      if (!isSupabaseConfigured || !supabase || health.code !== 'ok') {
         setLoading(false);
+        return;
       }
-    });
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user.email);
-        } else {
-          setProfile(null);
+      const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (sessionError) {
+        setConnection({
+          status: 'connection_failed',
+          label: connectionUiLabel('connection_failed'),
+          detail: `getSession() failed: ${sessionError.message}`,
+          code: 'session_error',
+        });
+        setLoading(false);
+        return;
+      }
+
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+      if (initialSession?.user) {
+        await fetchProfile(initialSession.user.id, initialSession.user.email);
+      }
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (_event, nextSession) => {
+          setSession(nextSession);
+          setUser(nextSession?.user ?? null);
+          if (nextSession?.user) {
+            await fetchProfile(nextSession.user.id, nextSession.user.email);
+          } else {
+            setProfile(null);
+          }
+          setLoading(false);
         }
-        // Only update loading to false after initial event
-        setLoading(false);
-      }
-    );
+      );
+      unsubscribe = () => subscription.unsubscribe();
+      setLoading(false);
+    };
 
-    return () => subscription.unsubscribe();
+    void init();
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
-    if (!supabase) return { error: 'Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.' };
+    if (!supabase) return { error: notConfiguredAuthError(connection) };
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
@@ -114,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUp = async (data: SignUpData): Promise<{ error: string | null }> => {
-    if (!supabase) return { error: 'Supabase is not configured.' };
+    if (!supabase) return { error: notConfiguredAuthError(connection) };
 
     const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
@@ -134,7 +224,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) return { error: error.message };
 
-    // If email confirmation is disabled the user is returned immediately
     if (authData.user && authData.session) {
       await fetchProfile(authData.user.id, data.email);
     }
@@ -150,7 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resetPassword = async (email: string): Promise<{ error: string | null }> => {
-    if (!supabase) return { error: 'Supabase is not configured.' };
+    if (!supabase) return { error: notConfiguredAuthError(connection) };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
@@ -158,15 +247,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProfile = async (updates: Partial<UserProfile>): Promise<{ error: string | null }> => {
-    if (!supabase || !user) return { error: 'Not authenticated.' };
+    if (!supabase || !user) return { error: 'Authentication required' };
 
+    // Defense-in-depth: strip server-managed identity and read-only computed
+    // fields so a stale caller cannot swap id or overwrite created_at/email.
+    const { id: _id, email: _email, created_at: _ca, ...safe } = updates;
     const { error } = await supabase
       .from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...safe, updated_at: new Date().toISOString() })
       .eq('id', user.id);
 
     if (error) return { error: error.message };
-    setProfile(prev => (prev ? { ...prev, ...updates } : null));
+    setProfile(prev => (prev ? { ...prev, ...safe } : null));
     return { error: null };
   };
 
@@ -177,7 +269,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile,
         session,
         loading,
-        isConfigured: isSupabaseConfigured,
+        isConfigured: connection.status === 'connected',
+        connection,
         signIn,
         signUp,
         signOut,

@@ -3,7 +3,7 @@
 
 -- 1. PEST OBSERVATIONS (Farmer pest/disease monitoring records)
 create table if not exists public.pest_observations (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   crop_id uuid references public.farm_crops(id) on delete set null,
@@ -22,7 +22,7 @@ create table if not exists public.pest_observations (
 
 -- 2. IPM RECORDS (Advisory decisions and recommendations)
 create table if not exists public.ipm_records (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   crop_id uuid references public.farm_crops(id) on delete set null,
@@ -38,7 +38,7 @@ create table if not exists public.ipm_records (
 
 -- 3. PESTICIDE APPLICATIONS (Record of pesticide/chemical applications with safety info)
 create table if not exists public.pesticide_applications (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   crop_id uuid references public.farm_crops(id) on delete set null,
@@ -62,7 +62,7 @@ create table if not exists public.pesticide_applications (
 
 -- 4. PESTICIDE ADVISORIES (Authoritative agricultural advisory knowledge base)
 create table if not exists public.pesticide_advisories (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   crop text not null,
   pest_or_disease text not null,
   control_category text not null check (control_category in ('prevention', 'cultural', 'mechanical', 'biological', 'botanical', 'chemical')),

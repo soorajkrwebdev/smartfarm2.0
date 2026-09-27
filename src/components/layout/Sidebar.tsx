@@ -159,7 +159,7 @@ function itemActiveColor(id: NavigationTab) {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => {
-  const { profile, signOut, isConfigured } = useAuth();
+  const { profile, signOut, connection } = useAuth();
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200/80 min-h-screen shrink-0 select-none">
@@ -181,10 +181,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
       <div className="px-4 py-2 bg-slate-50/80 border-b border-slate-100">
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-slate-500 font-medium">Database State:</span>
-          {isConfigured ? (
-            <Badge variant="emerald" size="sm">Supabase Live</Badge>
+          {connection.status === 'connected' ? (
+            <Badge variant="emerald" size="sm">{connection.label}</Badge>
           ) : (
-            <Badge variant="amber" size="sm">Not Configured</Badge>
+            <Badge variant="amber" size="sm">{connection.label}</Badge>
           )}
         </div>
       </div>

@@ -3,7 +3,7 @@
 
 -- 1. FARM INPUTS (Farmer inventory & purchase records)
 create table if not exists public.farm_inputs (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   crop_id uuid references public.farm_crops(id) on delete set null,
@@ -33,7 +33,7 @@ create table if not exists public.farm_inputs (
 
 -- 2. ORGANIC INPUTS (Curated scientific knowledge library - Non-commercial)
 create table if not exists public.organic_inputs (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   name text not null,
   category text not null check (category in (
     'Organic Manures',
@@ -59,7 +59,7 @@ create table if not exists public.organic_inputs (
 
 -- 3. CROP ORGANIC INPUTS (Relational mapping between crops and organic inputs)
 create table if not exists public.crop_organic_inputs (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   crop_name text not null,
   organic_input_id uuid not null references public.organic_inputs(id) on delete cascade,
   recommended_stage text not null,

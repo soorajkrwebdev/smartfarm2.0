@@ -2,7 +2,7 @@
 -- Digital Farm Management & Sustainable Agriculture Intelligence Platform
 
 -- Enable UUID extension
-create extension if not exists "uuid-ossp";
+create extension if not exists "pgcrypto";
 
 -- 1. PROFILES (Farmers)
 create table if not exists public.profiles (
@@ -20,7 +20,7 @@ create table if not exists public.profiles (
 
 -- 2. FARMS
 create table if not exists public.farms (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   name text not null,
   location text not null,
@@ -40,7 +40,7 @@ create table if not exists public.farms (
 
 -- 3. FARM CROPS
 create table if not exists public.farm_crops (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   farm_id uuid not null references public.farms(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   crop_name text not null,
@@ -69,7 +69,7 @@ create table if not exists public.farm_crops (
 
 -- 4. CROP ACTIVITIES
 create table if not exists public.crop_activities (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   farm_id uuid not null references public.farms(id) on delete cascade,
   crop_id uuid references public.farm_crops(id) on delete set null,
   user_id uuid not null references public.profiles(id) on delete cascade,

@@ -3,7 +3,7 @@
 
 -- 1. FARM JOBS (Public listings created by farmers, NO worker accounts)
 create table if not exists public.farm_jobs (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   title text not null,
@@ -24,7 +24,7 @@ create table if not exists public.farm_jobs (
 
 -- 2. JOB INQUIRIES (Submissions from public visitors/workers, no worker login required)
 create table if not exists public.job_inquiries (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   job_id uuid not null references public.farm_jobs(id) on delete cascade,
   applicant_name text not null,
   applicant_phone text not null,
@@ -38,7 +38,7 @@ create table if not exists public.job_inquiries (
 
 -- 3. FARM EXPENSES (Connected to farm financial analytics)
 create table if not exists public.farm_expenses (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   crop_id uuid references public.farm_crops(id) on delete set null,
@@ -54,7 +54,7 @@ create table if not exists public.farm_expenses (
 
 -- 4. CROP HARVESTS (Yield & harvest analytics)
 create table if not exists public.crop_harvests (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   crop_id uuid not null references public.farm_crops(id) on delete cascade,
@@ -72,7 +72,7 @@ create table if not exists public.crop_harvests (
 
 -- 5. MARKET PRICES (Government agricultural market data / AGMARKNET ecosystem)
 create table if not exists public.market_prices (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   crop text not null,
   state text not null,
   district text not null,
@@ -88,7 +88,7 @@ create table if not exists public.market_prices (
 
 -- 6. WEATHER CACHE
 create table if not exists public.weather_cache (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   latitude numeric(10, 4) not null,
   longitude numeric(10, 4) not null,
   cached_data jsonb not null,
@@ -98,7 +98,7 @@ create table if not exists public.weather_cache (
 
 -- 7. KNOWLEDGE SOURCES
 create table if not exists public.knowledge_sources (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   name text not null unique,
   organization text not null,
   website_url text,
@@ -109,7 +109,7 @@ create table if not exists public.knowledge_sources (
 
 -- 8. KNOWLEDGE ARTICLES (Authoritative, source-backed articles)
 create table if not exists public.knowledge_articles (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   title text not null,
   category text not null check (category in (
     'Organic Farming',
@@ -135,7 +135,7 @@ create table if not exists public.knowledge_articles (
 
 -- 9. NOTIFICATIONS
 create table if not exists public.notifications (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   type text not null check (type in ('activity_reminder', 'pest_follow_up', 'harvest_reminder', 'scheduled_activity', 'weather_indicator', 'advisory_update', 'job_inquiry')),
   title text not null,
@@ -149,7 +149,7 @@ create table if not exists public.notifications (
 
 -- 10. AI CONVERSATIONS
 create table if not exists public.ai_conversations (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   title text not null default 'Farm Advisory Consultation',
   messages jsonb not null default '[]',
@@ -160,7 +160,7 @@ create table if not exists public.ai_conversations (
 
 -- 11. FARM REPORTS
 create table if not exists public.farm_reports (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   report_title text not null,

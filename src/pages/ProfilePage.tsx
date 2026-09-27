@@ -7,7 +7,7 @@ import { FarmingType } from '../types';
 import { Database, Check, Copy } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
-  const { profile, updateProfile, isConfigured } = useAuth();
+  const { profile, updateProfile, connection } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -41,7 +41,7 @@ export const ProfilePage: React.FC = () => {
   };
 
   const handleCopyEnvSnippet = () => {
-    const snippet = `# .env\nVITE_SUPABASE_URL=https://your-project.supabase.co\nVITE_SUPABASE_ANON_KEY=your-anon-key`;
+    const snippet = `# .env\nVITE_SUPABASE_URL=https://your-project-id.supabase.co\nVITE_SUPABASE_ANON_KEY=your-anon-public-key-here\n# optional alias:\n# VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key-here`;
     navigator.clipboard.writeText(snippet);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -152,9 +152,13 @@ export const ProfilePage: React.FC = () => {
         <div className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/60 mb-5 text-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Current Mode:</span>
-            <span className="font-bold text-emerald-400">
-              {isConfigured ? 'Live Supabase Connected' : 'Supabase Not Configured'}
+            <span className={`font-bold ${connection.status === 'connected' ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {connection.label}
             </span>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-slate-400 shrink-0">Detail:</span>
+            <span className="font-mono text-slate-300 text-right">{connection.detail}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-400">Schema File:</span>

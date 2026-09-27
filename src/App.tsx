@@ -35,7 +35,7 @@ import { PestObservationModal } from './components/pest-ipm/PestObservationModal
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 
 const MainAppContent: React.FC = () => {
-  const { user, loading, isConfigured } = useAuth();
+  const { user, loading, connection } = useAuth();
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [authView, setAuthView] = useState<'none' | 'login' | 'register'>('none');
 
@@ -46,16 +46,15 @@ const MainAppContent: React.FC = () => {
   const [isAddInputOpen, setIsAddInputOpen] = useState(false);
   const [isPestObsModalOpen, setIsPestObsModalOpen] = useState(false);
 
-  if (loading) {
+  if (loading || connection.status === 'checking') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <LoadingSpinner message="Initializing SmartFarm 2.0 Platform..." />
+        <LoadingSpinner message="Checking connection..." />
       </div>
     );
   }
 
-  // Supabase not configured at all
-  if (!isConfigured) {
+  if (connection.status !== 'connected') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
         <div className="max-w-md w-full bg-white rounded-2xl border border-amber-200 p-8 text-center shadow-lg">
@@ -64,15 +63,21 @@ const MainAppContent: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Supabase Not Configured</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">{connection.label}</h2>
           <p className="text-sm text-slate-600 mb-4 leading-relaxed">
-            Copy <code className="bg-slate-100 px-1 rounded">.env.example</code> to{' '}
-            <code className="bg-slate-100 px-1 rounded">.env</code> and set your{' '}
-            <code className="bg-slate-100 px-1 rounded">VITE_SUPABASE_URL</code> and{' '}
-            <code className="bg-slate-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> values, then restart the dev server.
+            {connection.detail}
           </p>
+          {connection.status === 'configuration_missing' && (
+            <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+              Copy <code className="bg-slate-100 px-1 rounded">.env.example</code> to{' '}
+              <code className="bg-slate-100 px-1 rounded">.env</code> and set{' '}
+              <code className="bg-slate-100 px-1 rounded">VITE_SUPABASE_URL</code> and{' '}
+              <code className="bg-slate-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code>
+              {' '}(or <code className="bg-slate-100 px-1 rounded">VITE_SUPABASE_PUBLISHABLE_KEY</code>), then restart the dev server.
+            </p>
+          )}
           <p className="text-xs text-slate-400">
-            See the project README for setup instructions.
+            Error code: {connection.code}
           </p>
         </div>
       </div>

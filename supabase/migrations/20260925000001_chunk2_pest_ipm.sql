@@ -83,7 +83,7 @@ where verification_status not in (
 
 -- 2. Drop old default if it exists
 alter table public.pesticide_advisories
-  alter column verification_status drop default if exists;
+  alter column verification_status drop default;
 
 -- 3. Apply strict CHECK (USING clause will pass because step 1 already migrated everything)
 do $$ begin
@@ -109,7 +109,7 @@ alter table public.pesticide_advisories
 -- =========================================================================
 
 create table if not exists public.pest_follow_ups (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   crop_id uuid references public.farm_crops(id) on delete set null,

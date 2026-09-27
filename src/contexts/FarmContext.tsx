@@ -480,7 +480,10 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateFarm = async (id: string, data: Partial<Farm>) => {
     try {
       const sb = assertSupabase();
-      const { data: row, error } = await sb.from('farms').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+      // Defense-in-depth: never allow the caller to re-assign ownership or
+      // overwrite server-managed columns, even if the type surface is open.
+      const { id: _id, user_id: _uid, created_at: _ca, ...changes } = data;
+      const { data: row, error } = await sb.from('farms').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', id).select().single();
       if (error) return { error: error.message };
       setFarms(prev => prev.map(f => f.id === id ? row : f));
       return { data: row };

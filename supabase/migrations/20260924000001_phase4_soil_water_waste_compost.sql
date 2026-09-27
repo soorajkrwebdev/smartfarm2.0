@@ -3,7 +3,7 @@
 
 -- 1. SOIL TESTS
 create table if not exists public.soil_tests (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   test_date date not null default current_date,
@@ -26,7 +26,7 @@ create table if not exists public.soil_tests (
 
 -- 2. WATER TESTS
 create table if not exists public.water_tests (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   test_date date not null default current_date,
@@ -53,7 +53,7 @@ create table if not exists public.water_tests (
 
 -- 3. LAB REPORTS
 create table if not exists public.lab_reports (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   report_type text not null check (report_type in ('soil', 'water', 'input_analysis', 'residue_report', 'certification', 'other')),
@@ -69,7 +69,7 @@ create table if not exists public.lab_reports (
 
 -- 4. FARM WASTE
 create table if not exists public.farm_waste (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   waste_type text not null check (waste_type in ('crop_residue', 'leaves', 'weeds', 'animal_waste', 'organic_household_farm_waste', 'other')),
@@ -86,7 +86,7 @@ create table if not exists public.farm_waste (
 
 -- 5. COMPOST BATCHES
 create table if not exists public.compost_batches (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   farm_id uuid not null references public.farms(id) on delete cascade,
   compost_type text not null default 'compost' check (compost_type in ('vermicompost', 'farmyard_manure', 'green_manure', 'compost', 'biological_strain', 'other')),
