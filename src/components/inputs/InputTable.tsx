@@ -1,7 +1,7 @@
 import React from 'react';
 import { FarmInput, InputCategory } from '../../types';
 import { Badge } from '../common/Badge';
-import { Edit3, Trash2, Calendar, ClipboardPlus, Package } from 'lucide-react';
+import { Edit3, Trash2, ClipboardPlus } from 'lucide-react';
 
 interface InputTableProps {
   inputs: FarmInput[];

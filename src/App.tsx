@@ -22,6 +22,10 @@ import { AnalyticsPage } from './pages/analytics/AnalyticsPage';
 import { FarmAiPage } from './pages/farm-ai/FarmAiPage';
 import { KnowledgePage } from './pages/knowledge/KnowledgePage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ExpensesPage } from './pages/ExpensesPage';
+import { HarvestsPage } from './pages/HarvestsPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { ModulePreviewPage } from './pages/ModulePreviewPage';
 import { FarmFormModal } from './components/farms/FarmFormModal';
 import { CropFormModal } from './components/crops/CropFormModal';
@@ -125,34 +129,10 @@ const MainAppContent: React.FC = () => {
       case 'farm-ai':    return <FarmAiPage />;
       case 'knowledge':  return <KnowledgePage />;
       case 'profile':    return <ProfilePage />;
-      case 'reports':
-        return (
-          <ModulePreviewPage
-            tab="reports"
-            onGoToDashboard={() => setCurrentTab('dashboard')}
-          />
-        );
-      case 'notifications':
-        return (
-          <ModulePreviewPage
-            tab="notifications"
-            onGoToDashboard={() => setCurrentTab('dashboard')}
-          />
-        );
-      case 'expenses':
-        return (
-          <ModulePreviewPage
-            tab="expenses"
-            onGoToDashboard={() => setCurrentTab('dashboard')}
-          />
-        );
-      case 'harvests':
-        return (
-          <ModulePreviewPage
-            tab="harvests"
-            onGoToDashboard={() => setCurrentTab('dashboard')}
-          />
-        );
+      case 'expenses':     return <ExpensesPage />;
+      case 'harvests':     return <HarvestsPage />;
+      case 'notifications': return <NotificationsPage />;
+      case 'reports':      return <ReportsPage />;
       default:
         return (
           <ModulePreviewPage

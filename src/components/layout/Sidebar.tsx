@@ -20,7 +20,9 @@ import {
   Bell,
   Briefcase,
   LogOut,
-  Sparkles
+  Sparkles,
+  IndianRupee,
+  Wheat,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Badge } from '../common/Badge';
@@ -84,6 +86,8 @@ const NAV_SECTIONS: NavSection[] = [
       { id: 'crops', label: 'Crops', icon: <Sprout className="w-4 h-4" /> },
       { id: 'activities', label: 'Activities', icon: <ClipboardList className="w-4 h-4" /> },
       { id: 'inputs', label: 'Inputs', icon: <Package className="w-4 h-4" /> },
+      { id: 'expenses', label: 'Expenses', icon: <IndianRupee className="w-4 h-4" /> },
+      { id: 'harvests', label: 'Harvests', icon: <Wheat className="w-4 h-4" /> },
     ],
   },
   {

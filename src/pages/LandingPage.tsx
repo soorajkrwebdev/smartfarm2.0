@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Leaf,
-  Sprout,
   ShieldCheck,
   CloudSun,
   TrendingUp,

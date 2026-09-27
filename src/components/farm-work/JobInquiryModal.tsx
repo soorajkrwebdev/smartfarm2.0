@@ -54,6 +54,11 @@ export const JobInquiryModal: React.FC<JobInquiryModalProps> = ({ job, isOpen, o
 
   const handleClose = () => {
     setSubmitted(false);
+    setApplicantName('');
+    setApplicantPhone('');
+    setApplicantEmail('');
+    setMessage('');
+    setError(null);
     onClose();
   };
 
@@ -118,6 +123,17 @@ export const JobInquiryModal: React.FC<JobInquiryModalProps> = ({ job, isOpen, o
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-emerald-600 focus:outline-none"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Email Address (Optional)</label>
+            <input
+              type="email"
+              placeholder="e.g. suresh@example.com"
+              value={applicantEmail}
+              onChange={e => setApplicantEmail(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-emerald-600 focus:outline-none"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

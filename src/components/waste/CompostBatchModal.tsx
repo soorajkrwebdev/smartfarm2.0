@@ -7,16 +7,22 @@ import { CompostStatus } from '../../types';
 interface CompostBatchModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Pre-fill from a waste record when the farmer clicks "Start Composting" */
+  prefill?: {
+    farmId?: string;
+    quantity?: number;
+    unit?: string;
+  };
 }
 
-export const CompostBatchModal: React.FC<CompostBatchModalProps> = ({ isOpen, onClose }) => {
+export const CompostBatchModal: React.FC<CompostBatchModalProps> = ({ isOpen, onClose, prefill }) => {
   const { farms, crops, addCompostBatch } = useFarmData();
-  const [farmId, setFarmId] = useState(farms[0]?.id || '');
+  const [farmId, setFarmId] = useState(prefill?.farmId ?? farms[0]?.id ?? '');
   const [compostType, setCompostType] = useState<'vermicompost' | 'farmyard_manure' | 'green_manure' | 'compost' | 'other'>('vermicompost');
-  const [startingQuantity, setStartingQuantity] = useState<string>('200');
-  const [unit, setUnit] = useState<string>('kg');
+  const [startingQuantity, setStartingQuantity] = useState<string>(prefill?.quantity?.toString() ?? '');
+  const [unit, setUnit] = useState<string>(prefill?.unit ?? 'kg');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [processingMethod, setProcessingMethod] = useState('Earthworm biodegradation (Eisenia foetida) in shaded pit');
+  const [processingMethod, setProcessingMethod] = useState('');
   const [status, setStatus] = useState<CompostStatus>('active');
   const [finishedQuantity, setFinishedQuantity] = useState<string>('');
   const [completionDate, setCompletionDate] = useState<string>('');
@@ -58,6 +64,11 @@ export const CompostBatchModal: React.FC<CompostBatchModalProps> = ({ isOpen, on
       setError(res.error);
     } else {
       onClose();
+      setStartingQuantity('');
+      setFinishedQuantity('');
+      setCompletionDate('');
+      setAppliedToCropId('');
+      setProcessingMethod('');
       setNotes('');
     }
   };

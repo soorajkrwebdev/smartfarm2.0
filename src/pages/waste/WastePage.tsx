@@ -10,9 +10,11 @@ import {
   Trash2,
   Leaf,
   Sprout,
+  ArrowRight,
 } from 'lucide-react';
 import { FarmWasteModal } from '../../components/waste/FarmWasteModal';
 import { CompostBatchModal } from '../../components/waste/CompostBatchModal';
+import { FarmWaste } from '../../types';
 
 export const WastePage: React.FC = () => {
   const {
@@ -20,12 +22,23 @@ export const WastePage: React.FC = () => {
     compostBatches,
     deleteFarmWaste,
     deleteCompostBatch,
+    updateFarmWaste,
   } = useFarmData();
 
   const [tab, setTab] = useState<'waste' | 'compost'>('waste');
   const [q, setQ] = useState('');
   const [isWasteModalOpen, setIsWasteModalOpen] = useState(false);
   const [isCompostModalOpen, setIsCompostModalOpen] = useState(false);
+  const [compostPrefill, setCompostPrefill] = useState<{ farmId?: string; quantity?: number; unit?: string } | undefined>();
+
+  /** Open the compost modal pre-filled from a waste record and mark the waste as 'processing' */
+  const handleStartComposting = async (w: FarmWaste) => {
+    // Mark waste as processing
+    await updateFarmWaste(w.id, { status: 'processing' });
+    setCompostPrefill({ farmId: w.farm_id, quantity: w.quantity, unit: w.unit });
+    setTab('compost');
+    setIsCompostModalOpen(true);
+  };
 
   const wasteData = farmWaste
     .filter(
@@ -221,6 +234,19 @@ export const WastePage: React.FC = () => {
                       {w.notes}
                     </p>
                   )}
+
+                  {/* Workflow: start composting from this waste */}
+                  {(w.status === 'collected' || w.status === 'processing') && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <button
+                        onClick={() => handleStartComposting(w)}
+                        className="w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 hover:bg-emerald-100 transition-colors cursor-pointer"
+                      >
+                        <ArrowRight className="w-3.5 h-3.5" />
+                        Start Compost Batch from this Waste
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -324,7 +350,8 @@ export const WastePage: React.FC = () => {
       />
       <CompostBatchModal
         isOpen={isCompostModalOpen}
-        onClose={() => setIsCompostModalOpen(false)}
+        onClose={() => { setIsCompostModalOpen(false); setCompostPrefill(undefined); }}
+        prefill={compostPrefill}
       />
     </div>
   );

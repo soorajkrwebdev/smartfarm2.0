@@ -825,13 +825,32 @@ export interface NotificationItem {
   created_at: string;
 }
 
+export type AiResponseType =
+  | 'Farm Record'
+  | 'Agricultural Knowledge'
+  | 'Weather Context'
+  | 'Market Data'
+  | 'General Explanation'
+  | 'Uncertain / Insufficient Evidence';
+
+export interface AiSourceItem {
+  organization: string;
+  document: string;
+  reference?: string;
+  date?: string;
+  url?: string;
+  name?: string; // backwards compatibility
+}
+
 // AI Conversation
 export interface AiMessageItem {
   role: 'user' | 'assistant';
   content: string;
   title?: string;
+  response_type?: AiResponseType;
+  source_level?: 1 | 2 | 3 | 4;
   sections?: { heading: string; points: string[] }[];
-  sources?: { name: string; url?: string }[];
+  sources?: AiSourceItem[];
   farm_context?: string;
   timestamp: string;
 }
@@ -847,7 +866,20 @@ export interface AiConversationRecord {
 }
 
 // Farm Reports
+export type ReportType = 'crop_protection' | 'organic_summary' | 'farm_operations';
+
+export interface CropProtectionOutcome {
+  pestName: string;
+  cropName: string;
+  initialSeverity: string;
+  finalSeverity?: string;
+  outcome: string;
+  actionTaken: string;
+  date: string;
+}
+
 export interface FarmReportData {
+  report_type?: ReportType;
   farmer: {
     name: string;
     phone?: string;
@@ -868,6 +900,8 @@ export interface FarmReportData {
   totalExpenses: number;
   pestObservationsCount: number;
   ipmRecordsCount: number;
+  pesticideApplicationsCount?: number;
+  pestFollowUpsCount?: number;
   soilTestsCount: number;
   waterTestsCount: number;
   wasteRecycledKg: number;
@@ -880,6 +914,27 @@ export interface FarmReportData {
     wasteRecycledKg: number;
     ipmDecisionsCount: number;
     soilTestCount: number;
+  };
+  // Detailed breakdowns for reports
+  cropProtectionDetails?: {
+    observations: PestObservation[];
+    ipmActions: IPMRecord[];
+    applications: PesticideApplication[];
+    followUps: PestFollowUp[];
+    outcomes: CropProtectionOutcome[];
+  };
+  organicSummaryDetails?: {
+    organicPractices: CropActivity[];
+    organicInputs: FarmInput[];
+    compostBatches: CompostBatch[];
+    wasteRecycled: FarmWaste[];
+    soilTests: SoilTest[];
+  };
+  farmOperationsDetails?: {
+    activities: CropActivity[];
+    inputs: FarmInput[];
+    expenses: FarmExpense[];
+    harvests: CropHarvest[];
   };
 }
 
@@ -894,3 +949,4 @@ export interface FarmReportRecord {
   generated_at: string;
   farm_name?: string;
 }
+

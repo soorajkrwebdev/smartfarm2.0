@@ -13,10 +13,10 @@ export const WaterTestModal: React.FC<WaterTestModalProps> = ({ isOpen, onClose 
   const [farmId, setFarmId] = useState(farms[0]?.id || '');
   const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
   const [labName, setLabName] = useState('');
-  const [ph, setPh] = useState<string>('6.8');
-  const [ec, setEc] = useState<string>('0.45');
-  const [hardness, setHardness] = useState<string>('120');
-  const [alkalinity, setAlkalinity] = useState<string>('150');
+  const [ph, setPh] = useState<string>('');
+  const [ec, setEc] = useState<string>('');
+  const [hardness, setHardness] = useState<string>('');
+  const [alkalinity, setAlkalinity] = useState<string>('');
   const [suitability, setSuitability] = useState<'excellent' | 'good' | 'marginal' | 'poor' | 'unsuitable'>('good');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,6 +49,10 @@ export const WaterTestModal: React.FC<WaterTestModalProps> = ({ isOpen, onClose 
       setError(res.error);
     } else {
       onClose();
+      setPh('');
+      setEc('');
+      setHardness('');
+      setAlkalinity('');
       setNotes('');
     }
   };

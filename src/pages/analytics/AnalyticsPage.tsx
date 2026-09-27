@@ -12,6 +12,8 @@ import {
   FileCheck,
   Recycle,
   DollarSign,
+  ShieldAlert,
+  FlaskConical,
 } from 'lucide-react';
 import { useFarmData } from '../../contexts/FarmContext';
 
@@ -26,6 +28,7 @@ export const AnalyticsPage: React.FC = () => {
     compostBatches,
     pestObservations,
     ipmRecords,
+    pesticideApplications,
     expenses,
     harvests,
     loading,
@@ -116,6 +119,42 @@ export const AnalyticsPage: React.FC = () => {
   });
   const cropBreakdown = Object.entries(cropMap);
   const maxCropArea = Math.max(...cropBreakdown.map(e => e[1].area), 1);
+
+  // ── Crop-protection analytics ─────────────────────────────────────────
+  // Pest observations grouped by crop name
+  const pestByCrop: Record<string, { total: number; high: number; critical: number }> = {};
+  pestObservations.forEach(obs => {
+    const cropName = obs.crop_name || 'Unspecified Crop';
+    if (!pestByCrop[cropName]) pestByCrop[cropName] = { total: 0, high: 0, critical: 0 };
+    pestByCrop[cropName].total += 1;
+    if (obs.severity === 'high') pestByCrop[cropName].high += 1;
+    if (obs.severity === 'critical') pestByCrop[cropName].critical += 1;
+  });
+  const pestByCropEntries = Object.entries(pestByCrop).sort((a, b) => b[1].total - a[1].total);
+  const maxPestCropCount = Math.max(...pestByCropEntries.map(([, v]) => v.total), 1);
+
+  // IPM by advisory level
+  const ipmByLevel: Record<string, number> = {};
+  ipmRecords.forEach(r => {
+    ipmByLevel[r.advisory_level] = (ipmByLevel[r.advisory_level] ?? 0) + 1;
+  });
+  const ipmEntries = Object.entries(ipmByLevel).sort((a, b) => b[1] - a[1]);
+  const totalIPM = ipmRecords.length;
+  const chemicalIPM = ipmByLevel['chemical'] ?? 0;
+  const nonChemicalIPM = totalIPM - chemicalIPM;
+
+  // Severity distribution across all observations
+  const severityCounts: Record<string, number> = { low: 0, medium: 0, high: 0, critical: 0 };
+  pestObservations.forEach(o => { severityCounts[o.severity] = (severityCounts[o.severity] ?? 0) + 1; });
+  const severityColors: Record<string, string> = {
+    low: 'bg-emerald-500',
+    medium: 'bg-amber-500',
+    high: 'bg-orange-500',
+    critical: 'bg-rose-600',
+  };
+
+  const hasCropProtectionData =
+    pestObservations.length > 0 || ipmRecords.length > 0 || pesticideApplications.length > 0;
 
   const hasAnyData =
     totalFarms > 0 || totalCropsCount > 0 || totalActivitiesCount > 0 ||
@@ -334,9 +373,298 @@ export const AnalyticsPage: React.FC = () => {
         )}
       </div>
 
+      {/* ── CROP PROTECTION ANALYTICS ───────────────────────────────────────── */}
+      <div className="bg-slate-50 rounded-3xl border border-slate-200 p-1">
+        <div className="bg-white rounded-2xl border border-slate-200/50 p-5 mb-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Bug className="w-5 h-5 text-indigo-600" />
+            <h2 className="font-bold text-slate-800">Crop Protection Analytics</h2>
+          </div>
+          <p className="text-xs text-slate-400">
+            Pest observations, IPM decisions, and pesticide application records — all from your
+            logged data. No values are estimated or benchmarked.
+          </p>
+        </div>
+
+        {!hasCropProtectionData ? (
+          <div className="bg-white rounded-2xl border border-slate-200/50 p-8">
+            <EmptyState
+              icon={<Bug className="w-10 h-10 text-slate-300" />}
+              title="No crop-protection records yet"
+              description="Record pest observations, log IPM decisions, and add pesticide applications in the Pest & IPM module to see analytics here."
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-1">
+            {/* Summary KPIs */}
+            <div className="bg-white rounded-2xl border border-slate-200/50 p-5">
+              <h3 className="font-bold text-slate-800 text-sm mb-4">Summary Counts</h3>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-indigo-50 rounded-2xl p-3 border border-indigo-100">
+                  <p className="text-2xl font-extrabold text-indigo-800">
+                    {pestObservations.length}
+                  </p>
+                  <p className="text-[10px] text-indigo-600 font-semibold mt-0.5 uppercase tracking-wide">
+                    Observations
+                  </p>
+                </div>
+                <div className="bg-blue-50 rounded-2xl p-3 border border-blue-100">
+                  <p className="text-2xl font-extrabold text-blue-800">{totalIPM}</p>
+                  <p className="text-[10px] text-blue-600 font-semibold mt-0.5 uppercase tracking-wide">
+                    IPM Decisions
+                  </p>
+                </div>
+                <div className="bg-rose-50 rounded-2xl p-3 border border-rose-100">
+                  <p className="text-2xl font-extrabold text-rose-800">
+                    {pesticideApplications.length}
+                  </p>
+                  <p className="text-[10px] text-rose-600 font-semibold mt-0.5 uppercase tracking-wide">
+                    Pesticide Apps
+                  </p>
+                </div>
+              </div>
+
+              {/* Chemical vs non-chemical ratio */}
+              {totalIPM > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-slate-700">
+                      IPM: Chemical vs Non-chemical
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {totalIPM} total decisions
+                    </span>
+                  </div>
+                  {/* Stacked bar */}
+                  <div className="h-4 rounded-full overflow-hidden flex w-full bg-slate-100">
+                    {nonChemicalIPM > 0 && (
+                      <div
+                        className="bg-emerald-500 h-full transition-all"
+                        style={{ width: `${(nonChemicalIPM / totalIPM) * 100}%` }}
+                        title={`Non-chemical: ${nonChemicalIPM}`}
+                      />
+                    )}
+                    {chemicalIPM > 0 && (
+                      <div
+                        className="bg-rose-500 h-full transition-all"
+                        style={{ width: `${(chemicalIPM / totalIPM) * 100}%` }}
+                        title={`Chemical: ${chemicalIPM}`}
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 text-[11px]">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                      <span className="text-emerald-700 font-semibold">
+                        {nonChemicalIPM} Non-chemical (
+                        {totalIPM > 0 ? Math.round((nonChemicalIPM / totalIPM) * 100) : 0}%)
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+                      <span className="text-rose-700 font-semibold">
+                        {chemicalIPM} Chemical (
+                        {totalIPM > 0 ? Math.round((chemicalIPM / totalIPM) * 100) : 0}%)
+                      </span>
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    "Non-chemical" = monitoring, prevention, cultural, mechanical, biological,
+                    botanical. "Chemical" = advisory_level set to chemical in IPM record.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Severity distribution */}
+            {pestObservations.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200/50 p-5">
+                <h3 className="font-bold text-slate-800 text-sm mb-4">Severity Distribution</h3>
+                <div className="space-y-3">
+                  {(['low', 'medium', 'high', 'critical'] as const).map(sev => {
+                    const count = severityCounts[sev] ?? 0;
+                    if (count === 0) return null;
+                    const pct = Math.round((count / pestObservations.length) * 100);
+                    const labelColors: Record<string, string> = {
+                      low: 'text-emerald-700',
+                      medium: 'text-amber-700',
+                      high: 'text-orange-700',
+                      critical: 'text-rose-700',
+                    };
+                    return (
+                      <div key={sev}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span
+                            className={`text-xs font-semibold capitalize ${labelColors[sev]}`}
+                          >
+                            {sev}
+                          </span>
+                          <span className="text-xs text-slate-600">
+                            {count} ({pct}%)
+                          </span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${severityColors[sev]}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
+                  Severity as recorded by the farmer in each pest observation log.
+                </p>
+              </div>
+            )}
+
+            {/* Pest observations per crop */}
+            {pestByCropEntries.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200/50 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-slate-800 text-sm">Observations per Crop</h3>
+                  <Bug className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div className="space-y-3">
+                  {pestByCropEntries.map(([cropName, data]) => {
+                    const barW = (data.total / maxPestCropCount) * 100;
+                    return (
+                      <div key={cropName}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-slate-700 truncate max-w-[140px]">
+                            {cropName}
+                          </span>
+                          <span className="text-xs text-slate-500 shrink-0 ml-2">
+                            {data.total} obs
+                            {data.critical > 0 && (
+                              <span className="ml-1 text-rose-600 font-semibold">
+                                · {data.critical} critical
+                              </span>
+                            )}
+                            {data.high > 0 && (
+                              <span className="ml-1 text-orange-600 font-semibold">
+                                · {data.high} high
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="bg-indigo-500 h-full rounded-full transition-all"
+                            style={{ width: `${barW}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* IPM by advisory level */}
+            {ipmEntries.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200/50 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-slate-800 text-sm">IPM by Advisory Level</h3>
+                  <ShieldAlert className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="space-y-3">
+                  {ipmEntries.map(([level, count]) => {
+                    const pct = totalIPM > 0 ? Math.round((count / totalIPM) * 100) : 0;
+                    const barClass =
+                      level === 'chemical'
+                        ? 'bg-rose-500'
+                        : level === 'biological' || level === 'botanical'
+                        ? 'bg-emerald-500'
+                        : level === 'monitoring' || level === 'prevention'
+                        ? 'bg-blue-400'
+                        : 'bg-amber-400';
+                    return (
+                      <div key={level}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-slate-700 capitalize">
+                            {level}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            {count} ({pct}%)
+                          </span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${barClass}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Pesticide applications notice */}
+            {pesticideApplications.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200/50 p-5 lg:col-span-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <FlaskConical className="w-4 h-4 text-rose-600" />
+                  <h3 className="font-bold text-slate-800 text-sm">
+                    Pesticide Application Records ({pesticideApplications.length})
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs min-w-[500px]">
+                    <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 border-b border-slate-200">
+                      <tr>
+                        <th className="text-left p-2">Product</th>
+                        <th className="text-left p-2">Active Ingredient</th>
+                        <th className="text-left p-2">Crop</th>
+                        <th className="text-left p-2">Date</th>
+                        <th className="text-left p-2">Area</th>
+                        <th className="text-left p-2">PHI</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pesticideApplications.slice(0, 10).map(app => (
+                        <tr key={app.id} className="hover:bg-slate-50">
+                          <td className="p-2 font-semibold text-slate-800">{app.product_name}</td>
+                          <td className="p-2 text-slate-500">{app.active_ingredient || '—'}</td>
+                          <td className="p-2 text-slate-600">{app.crop_name || '—'}</td>
+                          <td className="p-2 text-slate-500">{app.application_date}</td>
+                          <td className="p-2 text-slate-500">
+                            {app.area} {app.area_unit}
+                          </td>
+                          <td className="p-2">
+                            {app.pre_harvest_interval_days != null ? (
+                              <span className="text-amber-700 font-semibold">
+                                {app.pre_harvest_interval_days} days
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">Not recorded</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {pesticideApplications.length > 10 && (
+                    <p className="text-[10px] text-slate-400 px-2 pt-2">
+                      Showing 10 of {pesticideApplications.length} records. View all in the Pest & IPM module.
+                    </p>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
+                  These are farmer-entered application records. PHI = Pre-Harvest Interval as
+                  entered by the farmer. This platform does not verify label compliance.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Sustainability indicators */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-emerald-900 rounded-2xl p-4 text-white shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">        <div className="bg-emerald-900 rounded-2xl p-4 text-white shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <Leaf className="w-4 h-4 text-emerald-300" />
             <span className="text-xs text-emerald-200">Organic Practices</span>

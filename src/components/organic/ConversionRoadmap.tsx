@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldAlert, CheckCircle2, AlertCircle, Sparkles, BookOpen, Layers, Heart, Globe, Scale } from 'lucide-react';
+import { ShieldAlert, Sparkles, Heart, Globe, Scale } from 'lucide-react';
 
 export const ConversionRoadmap: React.FC = () => {
   return (
